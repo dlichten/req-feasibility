@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { parse as parsePartialJSON } from "partial-json";
 
 const SAMPLE_REQ = `Senior Medical Billing Specialist
 Open
@@ -164,21 +165,27 @@ export default function Home() {
         if (done) break;
         text += decoder.decode(value, { stream: true });
         setStreamProgress(text.length);
-      }
 
-      let analysis;
-      try {
-        analysis = JSON.parse(text);
-      } catch {
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          analysis = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error("Failed to parse analysis response");
+        try {
+          const partial = parsePartialJSON(text);
+          if (partial && typeof partial === "object" && partial.overallScore !== undefined) {
+            setResult(partial as AnalysisResult);
+          }
+        } catch {
+          // Not enough tokens to parse yet
         }
       }
 
-      setResult(analysis);
+      // Final parse with the complete text
+      try {
+        const final = JSON.parse(text);
+        setResult(final);
+      } catch {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          setResult(JSON.parse(jsonMatch[0]));
+        }
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -282,34 +289,42 @@ export default function Home() {
         {result && (
           <div className="space-y-6 animate-fade-in">
             {/* a. Score + Header */}
-            <div className="bg-white rounded-xl border shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-6">Feasibility Analysis</h2>
-              <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
-                <ScoreGauge score={result.overallScore} />
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Assessment</span>
-                    <p className="text-base text-gray-800 mt-1">{result.overallVerdict}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Estimated Time-to-Fill</span>
-                    <p className="text-base text-gray-800 mt-1 font-medium">{result.estimatedTimeToFill}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</span>
-                    <p className="text-sm text-gray-700 mt-1 leading-relaxed">{result.summary}</p>
+            {result.overallScore !== undefined && (
+              <div className="bg-white rounded-xl border shadow-sm p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-6">Feasibility Analysis</h2>
+                <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
+                  <ScoreGauge score={result.overallScore} />
+                  <div className="space-y-3">
+                    {result.overallVerdict && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Assessment</span>
+                        <p className="text-base text-gray-800 mt-1">{result.overallVerdict}</p>
+                      </div>
+                    )}
+                    {result.estimatedTimeToFill && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Estimated Time-to-Fill</span>
+                        <p className="text-base text-gray-800 mt-1 font-medium">{result.estimatedTimeToFill}</p>
+                      </div>
+                    )}
+                    {result.summary && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</span>
+                        <p className="text-sm text-gray-700 mt-1 leading-relaxed">{result.summary}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* b. Flagged Requirements */}
-            {result.flags.length > 0 && (
+            {result.flags?.length > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-1">
                   Flagged Requirements
                   <span className="ml-2 text-sm font-normal text-gray-500">
-                    ({result.flags.length} found)
+                    ({result.flags.length}{loading ? "+" : ""} found)
                   </span>
                 </h2>
                 <p className="text-sm text-gray-500 mb-5">
@@ -317,7 +332,8 @@ export default function Home() {
                 </p>
                 <div className="space-y-4">
                   {result.flags.map((flag, i) => {
-                    const c = riskColors[flag.riskLevel];
+                    if (!flag.riskLevel || !flag.requirement) return null;
+                    const c = riskColors[flag.riskLevel] || riskColors.medium;
                     return (
                       <div key={i} className={`rounded-lg border ${c.border} ${c.bg} p-4`}>
                         <div className="flex items-start gap-3">
@@ -337,14 +353,16 @@ export default function Home() {
                               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${c.badge}`}>
                                 {flag.riskLevel.toUpperCase()}
                               </span>
-                              <span className="text-xs text-gray-500 font-medium">{flag.category}</span>
+                              {flag.category && <span className="text-xs text-gray-500 font-medium">{flag.category}</span>}
                             </div>
                             <p className="text-sm font-semibold text-gray-900 mb-1">{flag.requirement}</p>
-                            <p className="text-sm text-gray-700 mb-2">{flag.explanation}</p>
-                            <div className="bg-white/60 rounded px-3 py-2 border border-gray-200/50">
-                              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Suggestion: </span>
-                              <span className="text-sm text-gray-700">{flag.suggestion}</span>
-                            </div>
+                            {flag.explanation && <p className="text-sm text-gray-700 mb-2">{flag.explanation}</p>}
+                            {flag.suggestion && (
+                              <div className="bg-white/60 rounded px-3 py-2 border border-gray-200/50">
+                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Suggestion: </span>
+                                <span className="text-sm text-gray-700">{flag.suggestion}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -355,7 +373,7 @@ export default function Home() {
             )}
 
             {/* c. Well-Calibrated Requirements */}
-            {result.wellCalibratedRequirements && result.wellCalibratedRequirements.length > 0 && (
+            {result.wellCalibratedRequirements?.length > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -391,7 +409,7 @@ export default function Home() {
                       <h3 className="text-sm font-bold text-red-900 uppercase tracking-wide">Must Have</h3>
                     </div>
                     <ul className="space-y-2">
-                      {result.revisedScreeningCriteria.mustHave.map((item, i) => (
+                      {(result.revisedScreeningCriteria.mustHave || []).map((item, i) => (
                         <li key={i} className="text-sm text-red-900/80 leading-relaxed">{item}</li>
                       ))}
                     </ul>
@@ -404,7 +422,7 @@ export default function Home() {
                       <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wide">Nice to Have</h3>
                     </div>
                     <ul className="space-y-2">
-                      {result.revisedScreeningCriteria.niceToHave.map((item, i) => (
+                      {(result.revisedScreeningCriteria.niceToHave || []).map((item, i) => (
                         <li key={i} className="text-sm text-amber-900/80 leading-relaxed">{item}</li>
                       ))}
                     </ul>
@@ -417,12 +435,14 @@ export default function Home() {
                       <h3 className="text-sm font-bold text-teal-900 uppercase tracking-wide">Trainable</h3>
                     </div>
                     <ul className="space-y-3">
-                      {result.revisedScreeningCriteria.trainable.map((item, i) => (
+                      {(result.revisedScreeningCriteria.trainable || []).map((item, i) => (
                         <li key={i} className="text-sm text-teal-900/80">
                           <span className="leading-relaxed">{item.skill}</span>
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">
-                            {item.estimatedRampTime}
-                          </span>
+                          {item.estimatedRampTime && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">
+                              {item.estimatedRampTime}
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -432,7 +452,7 @@ export default function Home() {
             )}
 
             {/* e. Recommendations */}
-            {result.recommendations.length > 0 && (
+            {result.recommendations?.length > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">Recommendations</h2>
                 <ul className="space-y-3">
