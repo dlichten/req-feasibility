@@ -313,20 +313,30 @@ export default function Home() {
 
       const decoder = new TextDecoder();
       let text = "";
+      let lastRenderTime = 0;
+      const RENDER_INTERVAL = 50; // Cap at ~20fps for smooth progressive rendering
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         text += decoder.decode(value, { stream: true });
-        setStreamProgress(text.length);
 
-        try {
-          const partial = parsePartialJSON(text);
-          if (partial && typeof partial === "object" && partial.overallScore !== undefined) {
-            setResult(partial as AnalysisResult);
+        const now = Date.now();
+        if (now - lastRenderTime >= RENDER_INTERVAL) {
+          lastRenderTime = now;
+          setStreamProgress(text.length);
+
+          try {
+            const partial = parsePartialJSON(text);
+            if (partial && typeof partial === "object" && partial.overallScore !== undefined) {
+              setResult(partial as AnalysisResult);
+            }
+          } catch {
+            // Not enough tokens to parse yet
           }
-        } catch {
-          // Not enough tokens to parse yet
+
+          // Yield to the browser event loop so React can flush renders and paint
+          await new Promise((r) => setTimeout(r, 0));
         }
       }
 
