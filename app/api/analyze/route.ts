@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "edge";
+
 const SYSTEM_PROMPT = `You are a recruiting operations analyst specializing in requisition feasibility for an offshore staffing company. Your job is to review job requisitions and identify requirements that will make the role difficult to fill — particularly overly specific, niche, or stacking requirements that shrink the candidate pool and extend time-to-fill.
 
 You evaluate requisitions from the perspective of a recruiting ops leader who wants to keep time-to-fill under 56 days. The CEO has specifically called out that "if there's a specific niche or specific software requirement, that should raise a flag."
