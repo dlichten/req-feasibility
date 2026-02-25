@@ -107,9 +107,10 @@ export async function POST(request: NextRequest) {
   const client = new Anthropic({ apiKey });
 
   try {
-    const message = await client.messages.create({
+    const stream = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 4096,
+      stream: true,
       messages: [
         {
           role: "user",
@@ -119,23 +120,31 @@ export async function POST(request: NextRequest) {
       system: SYSTEM_PROMPT,
     });
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const encoder = new TextEncoder();
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              controller.enqueue(encoder.encode(event.delta.text));
+            }
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
 
-    let analysis;
-    try {
-      analysis = JSON.parse(text);
-    } catch {
-      // Try to extract JSON from the response if wrapped in markdown
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        analysis = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("Failed to parse analysis response");
-      }
-    }
-
-    return NextResponse.json(analysis);
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+      },
+    });
   } catch (err: unknown) {
     console.error("Analysis error:", err);
     const message =
