@@ -268,7 +268,7 @@ export default function Home() {
           <div className="p-6">
             {!reqText && !result && (
               <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-                Paste a job requisition to get an instant feasibility risk assessment. The analyzer flags niche software requirements, stacked specializations, and other factors that extend time-to-fill beyond 56 days.
+                Paste a job requisition to get an instant feasibility risk assessment. The analyzer flags niche software requirements, stacked specializations, and other factors that extend time-to-fill.
               </p>
             )}
             <div className="flex items-center justify-between mb-4">
