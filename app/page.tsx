@@ -420,6 +420,9 @@ export default function Home() {
                     );
                   })}
                 </div>
+                <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
+                  Pool reduction estimates are directional, based on AI analysis of offshore healthcare staffing market patterns. Validate against internal pipeline data for specific roles.
+                </p>
               </div>
             )}
 
