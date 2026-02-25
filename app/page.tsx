@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import { parse as parsePartialJSON } from "partial-json";
 
 const SAMPLE_REQ = `Senior Medical Billing Specialist
@@ -313,32 +314,31 @@ export default function Home() {
 
       const decoder = new TextDecoder();
       let text = "";
-      let lastRenderTime = 0;
-      const RENDER_INTERVAL = 50; // Cap at ~20fps for smooth progressive rendering
+      let chunkCount = 0;
+      const streamStart = Date.now();
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        text += decoder.decode(value, { stream: true });
+        chunkCount++;
+        const chunk = decoder.decode(value, { stream: true });
+        text += chunk;
+        console.log(`[stream] chunk #${chunkCount}: +${chunk.length} chars (total: ${text.length}) @ ${Date.now() - streamStart}ms`);
 
-        const now = Date.now();
-        if (now - lastRenderTime >= RENDER_INTERVAL) {
-          lastRenderTime = now;
-          setStreamProgress(text.length);
-
-          try {
-            const partial = parsePartialJSON(text);
-            if (partial && typeof partial === "object" && partial.overallScore !== undefined) {
+        try {
+          const partial = parsePartialJSON(text);
+          if (partial && typeof partial === "object" && partial.overallScore !== undefined) {
+            flushSync(() => {
+              setStreamProgress(text.length);
               setResult(partial as AnalysisResult);
-            }
-          } catch {
-            // Not enough tokens to parse yet
+            });
           }
-
-          // Yield to the browser event loop so React can flush renders and paint
-          await new Promise((r) => setTimeout(r, 0));
+        } catch {
+          // Not enough tokens to parse yet
         }
       }
+
+      console.log(`[stream] done: ${chunkCount} chunks, ${text.length} chars, ${Date.now() - streamStart}ms`);
 
       try {
         const final = JSON.parse(text);
