@@ -127,11 +127,51 @@ function ScoreGauge({ score }: { score: number }) {
   );
 }
 
+type FeedbackValue = "up" | "down" | null;
+
+function SectionFeedback({ section, feedback, onFeedback }: {
+  section: string;
+  feedback: FeedbackValue;
+  onFeedback: (section: string, value: FeedbackValue) => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 ml-auto">
+      <button
+        onClick={() => onFeedback(section, feedback === "up" ? null : "up")}
+        className={`p-1 rounded transition-colors ${
+          feedback === "up"
+            ? "text-green-600 bg-green-50"
+            : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+        }`}
+        title="Helpful"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => onFeedback(section, feedback === "down" ? null : "down")}
+        className={`p-1 rounded transition-colors ${
+          feedback === "down"
+            ? "text-red-500 bg-red-50"
+            : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+        }`}
+        title="Not helpful"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 01-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 011.423.23l3.114 1.04a4.5 4.5 0 001.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 007.5 19.75 2.25 2.25 0 009.75 22a.75.75 0 00.75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 002.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.31-.269 2.56-.754 3.695" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export default function Home() {
   const [reqText, setReqText] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Record<string, FeedbackValue>>({});
 
   const [streamProgress, setStreamProgress] = useState(0);
 
@@ -141,6 +181,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     setStreamProgress(0);
+    setFeedback({});
 
     try {
       const res = await fetch("/api/analyze", {
@@ -191,6 +232,10 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleFeedback(section: string, value: FeedbackValue) {
+    setFeedback(prev => ({ ...prev, [section]: value }));
   }
 
   function loadSample() {
@@ -291,7 +336,10 @@ export default function Home() {
             {/* a. Score + Header */}
             {result.overallScore !== undefined && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-6">Feasibility Analysis</h2>
+                <div className="flex items-center mb-6">
+                <h2 className="text-lg font-bold text-gray-900">Feasibility Analysis</h2>
+                {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
+              </div>
                 <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
                   <ScoreGauge score={result.overallScore} />
                   <div className="space-y-3">
@@ -321,12 +369,15 @@ export default function Home() {
             {/* b. Flagged Requirements */}
             {result.flags?.length > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">
-                  Flagged Requirements
-                  <span className="ml-2 text-sm font-normal text-gray-500">
-                    ({result.flags.length}{loading ? "+" : ""} found)
-                  </span>
-                </h2>
+                <div className="flex items-center mb-1">
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Flagged Requirements
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      ({result.flags.length}{loading ? "+" : ""} found)
+                    </span>
+                  </h2>
+                  {!loading && <SectionFeedback section="flags" feedback={feedback.flags} onFeedback={handleFeedback} />}
+                </div>
                 <p className="text-sm text-gray-500 mb-5">
                   Requirements that may narrow your candidate pool and extend time-to-fill.
                 </p>
@@ -380,6 +431,7 @@ export default function Home() {
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
                   </svg>
                   <h2 className="text-lg font-bold text-gray-900">Well-Calibrated Requirements</h2>
+                  {!loading && <SectionFeedback section="calibrated" feedback={feedback.calibrated} onFeedback={handleFeedback} />}
                 </div>
                 <ul className="space-y-2">
                   {result.wellCalibratedRequirements.map((req, i) => (
@@ -397,7 +449,10 @@ export default function Home() {
             {/* d. Revised Screening Criteria */}
             {result.revisedScreeningCriteria && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Recommended Screening Criteria</h2>
+                <div className="flex items-center mb-1">
+                  <h2 className="text-lg font-bold text-gray-900">Recommended Screening Criteria</h2>
+                  {!loading && <SectionFeedback section="screening" feedback={feedback.screening} onFeedback={handleFeedback} />}
+                </div>
                 <p className="text-sm text-gray-500 mb-5">
                   A restructured rubric you can share directly with the hiring manager.
                 </p>
@@ -454,7 +509,10 @@ export default function Home() {
             {/* e. Recommendations */}
             {result.recommendations?.length > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Recommendations</h2>
+                <div className="flex items-center mb-4">
+                  <h2 className="text-lg font-bold text-gray-900">Recommendations</h2>
+                  {!loading && <SectionFeedback section="recommendations" feedback={feedback.recommendations} onFeedback={handleFeedback} />}
+                </div>
                 <ul className="space-y-3">
                   {result.recommendations.map((rec, i) => (
                     <li key={i} className="flex items-start gap-3">
