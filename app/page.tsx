@@ -577,11 +577,11 @@ export default function Home() {
             )}
 
             {/* Alignment Notes */}
-            {alignmentFlags.length > 0 && !loading && (
+            {alignmentFlags.length > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
                 <div className="flex items-center mb-1">
                   <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
-                  <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />
+                  {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
                 </div>
                 <p className="text-sm text-gray-500 mb-5">
                   Potential mismatches between job description and screening criteria.
