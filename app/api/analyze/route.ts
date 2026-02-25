@@ -1,6 +1,8 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { streamText } from "ai";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
+export const runtime = "edge";
 
 const SYSTEM_PROMPT = `You are a recruiting operations analyst specializing in requisition feasibility for an offshore staffing company. Your job is to review job requisitions and identify requirements that will make the role difficult to fill — particularly overly specific, niche, or stacking requirements that shrink the candidate pool and extend time-to-fill.
 
@@ -115,7 +117,7 @@ Be direct and confident in your analysis, but frame pool estimates and market as
 
 Return ONLY the JSON object, no markdown formatting or code blocks.`;
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -148,7 +150,13 @@ export async function POST(request: NextRequest) {
       prompt: `[Hiring Market: ${market}]\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
     });
 
-    return result.toTextStreamResponse();
+    return result.toTextStreamResponse({
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "X-Accel-Buffering": "no",
+      },
+    });
   } catch (err: unknown) {
     const message =
       err instanceof Error ? err.message : "Failed to analyze requisition";
