@@ -1,6 +1,6 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { streamText } from "ai";
 import { NextRequest, NextResponse } from "next/server";
-
-export const runtime = "edge";
 
 const SYSTEM_PROMPT = `You are a recruiting operations analyst specializing in requisition feasibility for an offshore staffing company. Your job is to review job requisitions and identify requirements that will make the role difficult to fill — particularly overly specific, niche, or stacking requirements that shrink the candidate pool and extend time-to-fill.
 
@@ -139,91 +139,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const anthropic = createAnthropic({ apiKey });
+
   try {
-    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4096,
-        stream: true,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: "user",
-            content: `[Hiring Market: ${market}]\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
-          },
-        ],
-      }),
+    const result = streamText({
+      model: anthropic("claude-sonnet-4-6"),
+      system: SYSTEM_PROMPT,
+      prompt: `[Hiring Market: ${market}]\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
     });
 
-    if (!anthropicRes.ok) {
-      const errBody = await anthropicRes.text();
-      return NextResponse.json(
-        { error: errBody || "Anthropic API request failed" },
-        { status: anthropicRes.status }
-      );
-    }
-
-    // Parse SSE stream from Anthropic and extract text deltas
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    const transform = new TransformStream({
-      transform(chunk, controller) {
-        buffer += decoder.decode(chunk, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const data = line.slice(6).trim();
-          if (!data || data === "[DONE]") continue;
-          try {
-            const event = JSON.parse(data);
-            if (
-              event.type === "content_block_delta" &&
-              event.delta?.type === "text_delta"
-            ) {
-              controller.enqueue(encoder.encode(event.delta.text));
-            }
-          } catch {
-            // non-JSON or incomplete line, skip
-          }
-        }
-      },
-      flush(controller) {
-        if (buffer.startsWith("data: ")) {
-          const data = buffer.slice(6).trim();
-          if (data && data !== "[DONE]") {
-            try {
-              const event = JSON.parse(data);
-              if (
-                event.type === "content_block_delta" &&
-                event.delta?.type === "text_delta"
-              ) {
-                controller.enqueue(encoder.encode(event.delta.text));
-              }
-            } catch {
-              // ignore
-            }
-          }
-        }
-      },
-    });
-
-    return new Response(anthropicRes.body!.pipeThrough(transform), {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Accel-Buffering": "no",
-      },
-    });
+    return result.toTextStreamResponse();
   } catch (err: unknown) {
     const message =
       err instanceof Error ? err.message : "Failed to analyze requisition";
