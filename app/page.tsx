@@ -314,22 +314,21 @@ export default function Home() {
 
       const decoder = new TextDecoder();
       let text = "";
-      let chunkCount = 0;
-      const streamStart = Date.now();
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        chunkCount++;
-        const chunk = decoder.decode(value, { stream: true });
-        text += chunk;
-        console.log(`[stream] chunk #${chunkCount}: +${chunk.length} chars (total: ${text.length}) @ ${Date.now() - streamStart}ms`);
+        text += decoder.decode(value, { stream: true });
+        setStreamProgress(text.length);
+
+        // Strip any preamble (e.g. markdown code fences) before the JSON
+        const jsonStart = text.indexOf("{");
+        if (jsonStart < 0) continue;
 
         try {
-          const partial = parsePartialJSON(text);
+          const partial = parsePartialJSON(text.slice(jsonStart));
           if (partial && typeof partial === "object" && partial.overallScore !== undefined) {
             flushSync(() => {
-              setStreamProgress(text.length);
               setResult(partial as AnalysisResult);
             });
           }
@@ -337,8 +336,6 @@ export default function Home() {
           // Not enough tokens to parse yet
         }
       }
-
-      console.log(`[stream] done: ${chunkCount} chunks, ${text.length} chars, ${Date.now() - streamStart}ms`);
 
       try {
         const final = JSON.parse(text);
