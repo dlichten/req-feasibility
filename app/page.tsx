@@ -164,8 +164,6 @@ export default function Home() {
     setResult(null);
   }
 
-  const showEmptyState = !reqText && !result && !loading && !error;
-
   return (
     <main className="min-h-screen">
       {/* Header */}
@@ -186,42 +184,25 @@ export default function Home() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
-        {/* Empty State */}
-        {showEmptyState && (
-          <div className="bg-white rounded-xl border shadow-sm p-10 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mx-auto mb-5">
-              <svg className="w-7 h-7 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9zm3.75 11.625a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Analyze a Job Requisition</h2>
-            <p className="text-sm text-gray-500 max-w-lg mx-auto mb-6 leading-relaxed">
-              Paste a job requisition to get an instant feasibility risk assessment. The analyzer flags niche software requirements, stacked specializations, and other factors that extend time-to-fill beyond 56 days.
-            </p>
-            <button
-              onClick={loadSample}
-              className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              Try Sample Requisition
-            </button>
-          </div>
-        )}
-
         {/* Input Section */}
-        {(reqText || result || loading || error) && (
-          <div className="bg-white rounded-xl border shadow-sm">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <label htmlFor="req" className="text-sm font-semibold text-gray-700">
-                  Paste Job Requisition
-                </label>
-                <button
-                  onClick={loadSample}
-                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                >
-                  Load sample req
-                </button>
-              </div>
+        <div className="bg-white rounded-xl border shadow-sm">
+          <div className="p-6">
+            {!reqText && !result && (
+              <p className="text-sm text-gray-500 mb-4 leading-relaxed">
+                Paste a job requisition to get an instant feasibility risk assessment. The analyzer flags niche software requirements, stacked specializations, and other factors that extend time-to-fill beyond 56 days.
+              </p>
+            )}
+            <div className="flex items-center justify-between mb-4">
+              <label htmlFor="req" className="text-sm font-semibold text-gray-700">
+                Paste Job Requisition
+              </label>
+              <button
+                onClick={loadSample}
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+              >
+                Try sample req
+              </button>
+            </div>
               <textarea
                 id="req"
                 rows={12}
@@ -259,7 +240,6 @@ export default function Home() {
               </div>
             </div>
           </div>
-        )}
 
         {/* Error */}
         {error && (
