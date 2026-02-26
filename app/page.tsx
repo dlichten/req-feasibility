@@ -651,7 +651,7 @@ export default function Home() {
   const [selectedLocations, setSelectedLocations] = useState<string[]>(["ph-all"]);
   const [workSetup, setWorkSetup] = useState<WorkSetup>("Work From Home");
   const [shiftType, setShiftType] = useState<ShiftType>("Morning (Weekends Off)");
-  const [compensation, setCompensation] = useState<Record<string, string>>({});
+  const [compensation, setCompensation] = useState<Record<string, { min: string; max: string }>>({});
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -797,12 +797,13 @@ export default function Home() {
       .map(id => getLocationById(id)?.label)
       .filter(Boolean) as string[];
 
-    const compEntries: Record<string, number> = {};
+    const compEntries: Record<string, { min: number; max: number }> = {};
     for (const [country, val] of Object.entries(compensation)) {
-      const num = parseInt(val, 10);
-      if (num > 0) {
+      const min = parseInt(val.min, 10);
+      const max = parseInt(val.max, 10);
+      if (min > 0 || max > 0) {
         const cur = CURRENCY_BY_COUNTRY[country];
-        if (cur) compEntries[cur.code] = num;
+        if (cur) compEntries[cur.code] = { min: min || 0, max: max || 0 };
       }
     }
 
@@ -1185,30 +1186,41 @@ export default function Home() {
             {selectedCountries.length > 0 && (
               <div className="mb-4">
                 <span className="text-sm font-semibold text-gray-700 block mb-1">Monthly Compensation</span>
-                <p className="text-xs text-gray-400 mb-2">Gross monthly salary offered for this role</p>
-                <div className="flex flex-wrap gap-3">
+                <p className="text-xs text-gray-400 mb-2">Gross monthly salary range offered for this role</p>
+                <div className="space-y-2">
                   {selectedCountries.map(country => {
                     const cur = CURRENCY_BY_COUNTRY[country];
                     if (!cur) return null;
+                    const val = compensation[country] || { min: "", max: "" };
                     return (
                       <div key={country} className="flex items-center gap-2">
                         {selectedCountries.length > 1 && (
                           <span className="text-xs font-medium text-gray-400 w-20 flex-shrink-0">{country}</span>
                         )}
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">{cur.code}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={compensation[country] || ""}
-                            onChange={(e) => {
-                              setCompensation(prev => ({ ...prev, [country]: e.target.value }));
-                              if (result) setResult(null);
-                            }}
-                            placeholder="Optional"
-                            className="w-44 pl-12 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none"
-                          />
-                        </div>
+                        <span className="text-sm text-gray-400 font-medium">{cur.code}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={val.min}
+                          onChange={(e) => {
+                            setCompensation(prev => ({ ...prev, [country]: { ...prev[country] || { min: "", max: "" }, min: e.target.value } }));
+                            if (result) setResult(null);
+                          }}
+                          placeholder="Min"
+                          className="w-28 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none"
+                        />
+                        <span className="text-sm text-gray-300">—</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={val.max}
+                          onChange={(e) => {
+                            setCompensation(prev => ({ ...prev, [country]: { ...prev[country] || { min: "", max: "" }, max: e.target.value } }));
+                            if (result) setResult(null);
+                          }}
+                          placeholder="Max"
+                          className="w-28 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none"
+                        />
                       </div>
                     );
                   })}

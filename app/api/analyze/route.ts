@@ -111,7 +111,12 @@ When shift type makes the req harder to fill, flag it as a "Shift Type Constrain
 
 ### Compensation Assessment
 
-When the user provides a monthly compensation figure, assess it relative to the role type, experience level, and country market. If no compensation is provided, skip this section entirely — do not guess or estimate compensation.
+When the user provides a monthly compensation range (min - max), assess both ends relative to the role type, experience level, and country market. If no compensation is provided, skip this section entirely — do not guess or estimate compensation.
+
+Consider:
+- Is the floor (min) competitive enough to attract candidates?
+- Is the ceiling (max) competitive for experienced/senior candidates in the pool?
+- Is the range itself too narrow, limiting negotiation flexibility? A very tight range (e.g., 23,000 - 25,000 for a role where market is 30,000 - 50,000) signals rigidity that can slow the process.
 
 **Philippines (PHP):**
 - Entry-level BPO/admin: 18,000-25,000/month
@@ -313,7 +318,7 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { requisition?: string; locations?: string[]; workSetup?: string; shiftType?: string; compensation?: Record<string, number> };
+  let body: { requisition?: string; locations?: string[]; workSetup?: string; shiftType?: string; compensation?: Record<string, { min: number; max: number }> };
   try {
     body = await request.json();
   } catch {
@@ -348,7 +353,7 @@ export async function POST(request: Request) {
     const result = streamText({
       model: anthropic("claude-sonnet-4-6"),
       system: SYSTEM_PROMPT,
-      prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}] [Shift Type: ${shiftType}]${compensation && Object.keys(compensation).length > 0 ? ` [Compensation: ${Object.entries(compensation).map(([cur, amt]) => `${amt.toLocaleString()} ${cur}/month`).join(", ")}]` : ""}\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
+      prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}] [Shift Type: ${shiftType}]${compensation && Object.keys(compensation).length > 0 ? ` [Compensation: ${Object.entries(compensation).map(([cur, range]) => `${cur} ${range.min.toLocaleString()} - ${range.max.toLocaleString()}/month`).join(", ")}]` : ""}\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
     });
 
     return result.toTextStreamResponse({
