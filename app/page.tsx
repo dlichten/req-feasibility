@@ -71,7 +71,7 @@ const LOCATIONS: Record<string, LocationOption[]> = {
     { id: "ph-davao", label: "Davao", isCountryWide: false },
   ],
   Colombia: [
-    { id: "co-all", label: "All Colombia", isCountryWide: true },
+    { id: "co-all", label: "All Colombia (remote)", isCountryWide: true },
     { id: "co-bogota", label: "Bogot\u00e1", isCountryWide: false },
   ],
   India: [
