@@ -182,6 +182,15 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.11.1",
+    date: "Feb 26, 2026",
+    changes: [
+      "Fixed compensation assessment consistency — now uses explicit threshold rules instead of interpretive assessment",
+      "Set API temperature to 0 to reduce variance across runs",
+      "Comp assessment now shows market range comparison explicitly",
+    ],
+  },
+  {
     version: "v2.11",
     date: "Feb 26, 2026",
     changes: [
@@ -993,7 +1002,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.11
+              v2.11.1
             </button>
           </div>
         </div>

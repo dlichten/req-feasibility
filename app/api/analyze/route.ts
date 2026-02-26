@@ -109,14 +109,11 @@ The user will specify the shift type for the role. This affects candidate willin
 
 When shift type makes the req harder to fill, flag it as a "Shift Type Constraint." Nightshift alone is worth a flag on specialized roles. Nightshift + fully on-site + niche requirements is a major compounding constraint.
 
-### Compensation Assessment
+### Compensation Assessment Rules
 
-When the user provides a monthly compensation range (min - max), assess both ends relative to the role type, experience level, and country market. If no compensation is provided, skip this section entirely — do not guess or estimate compensation.
+When the user provides a monthly compensation range (min - max), assess it using the rules below. If no compensation is provided, skip this section entirely — do not guess or estimate compensation.
 
-Consider:
-- Is the floor (min) competitive enough to attract candidates?
-- Is the ceiling (max) competitive for experienced/senior candidates in the pool?
-- Is the range itself too narrow, limiting negotiation flexibility? A very tight range (e.g., 23,000 - 25,000 for a role where market is 30,000 - 50,000) signals rigidity that can slow the process.
+**Step 1: Determine the market range.** Based on the role type, experience level, and country, identify the market range using the reference data below. State the market range explicitly in your assessment.
 
 **Philippines (PHP):**
 - Entry-level BPO/admin: 18,000-25,000/month
@@ -138,13 +135,22 @@ Consider:
 - Senior specialized: 70,000-120,000
 - Highly specialized/niche: 100,000-180,000+
 
-These ranges are approximate baselines. Adjust your assessment based on the specific role requirements — a mid-level biller with niche DME + Brightree experience commands the higher end of mid-level or even senior-level comp.
+Adjust the market range based on the specific role requirements — a mid-level biller with niche DME + Brightree experience commands the higher end of mid-level or even senior-level comp.
 
-Assess compensation as one of:
-- "highly_competitive" — above market, will attract strong candidates and accelerate fill time
-- "competitive" — at market, no negative impact on feasibility
-- "below_market" — will reduce the pool and extend fill time. Estimate the impact.
-- "significantly_below_market" — will be a primary blocker. Many qualified candidates will decline or not apply.
+**Step 2: Compare offered MAX against the market range.** Use these exact rules:
+- If the offered MAX is below the market range FLOOR → "significantly_below_market"
+- If the offered MAX is within the bottom 25% of the market range → "below_market"
+- If the offered MAX is within the middle 50% of the market range → "competitive"
+- If the offered MAX is within the top 25% of the market range → "highly_competitive"
+- If the offered MAX is above the market range CEILING → "highly_competitive"
+
+**Step 3: Assess the offered MIN.**
+- If the offered MIN is below the market range FLOOR, note that the floor will not attract qualified candidates even if the ceiling is competitive.
+
+**Step 4: Assess the spread.**
+- If the gap between MIN and MAX is less than 15% of the MIN, note that the narrow range limits negotiation flexibility.
+
+**Step 5: Show your math.** Always state the market range and explain which threshold the offered MAX falls into. For example: "Market range for this role: PHP 45,000-65,000. Offered max of 45,000 falls at the floor of the market range (bottom 25%) — Below Market."
 
 When comp is below market, flag it as "Compensation Constraint." If the comp is below market AND the role has niche requirements, call out the compounding effect — you're asking for a unicorn and underpaying for it.
 
@@ -352,6 +358,7 @@ export async function POST(request: Request) {
   try {
     const result = streamText({
       model: anthropic("claude-sonnet-4-6"),
+      temperature: 0,
       system: SYSTEM_PROMPT,
       prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}] [Shift Type: ${shiftType}]${compensation && Object.keys(compensation).length > 0 ? ` [Compensation: ${Object.entries(compensation).map(([cur, range]) => `${cur} ${range.min.toLocaleString()} - ${range.max.toLocaleString()}/month`).join(", ")}]` : ""}\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
     });
