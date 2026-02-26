@@ -154,7 +154,7 @@ Adjust the market range based on the specific role requirements — a mid-level 
 
 When comp is below market, flag it as "Compensation Constraint." If the comp is below market AND the role has niche requirements, call out the compounding effect — you're asking for a unicorn and underpaying for it.
 
-In multi-location results, note where site-level comp expectations differ. For example: "This salary is competitive for Davao but below market for Ortigas, where candidates have more options and higher cost of living."
+In multi-location results, use the siteVariance field to note where comp expectations differ. Always prefix with "Site variance: ". For example: "Site variance: Competitive in Davao and Angeles, below market in Ortigas where cost of living is higher." For WFH/national pool roles, use: "Site variance: Not applicable — WFH draws from the national pool, so a single market range applies." Omit siteVariance entirely for single-site analyses with no variance to note.
 
 ## Multi-Location Analysis Structure
 
@@ -232,7 +232,7 @@ Return a JSON object with this exact structure. Always use this format, even for
         "rating": "highly_competitive" | "competitive" | "below_market" | "significantly_below_market",
         "explanation": "<1-2 sentences on how this comp compares to market for this role type>",
         "marketRange": "<e.g. '30,000-50,000 PHP for this role type'>",
-        "siteVariance": "<optional: note if comp is competitive in some sites but not others>"
+        "siteVariance": "<optional: always prefix with 'Site variance: '. For WFH/national pool: 'Site variance: Not applicable — WFH draws from the national pool, so a single market range applies.' For site-specific roles with variance: 'Site variance: Competitive in Davao and Angeles, below market in Ortigas where cost of living is higher.' Omit this field entirely for single-site analyses with no variance to note.>"
       }
     }
   ],
