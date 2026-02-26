@@ -126,6 +126,16 @@ Score represents how fillable this requisition is in the target location with th
 - **16-24**: Very low feasibility. Unicorn profile — the combination of requirements makes this extremely difficult to fill. Estimated TTF is 2-3x+ the baseline.
 - **0-15**: Near-impossible. Contains at least one screening criterion that is effectively disqualifying on its own. The requisition will not be filled without removing or substantially revising this requirement. Expect indefinite vacancy.
 
+When writing the verdict and any assessment text, use the EXACT label that corresponds to the score's bucket. Do not paraphrase or substitute.
+
+  80-100 → always say "High Feasibility"
+  55-79 → always say "Moderate Feasibility"
+  25-54 → always say "Low Feasibility"
+  16-24 → always say "Very Low Feasibility"
+  0-15 → always say "Near-Impossible"
+
+If the score is 78, the verdict MUST start with "Moderate feasibility" — not "Good feasibility." The label in the comparison table, the verdict text, and the detail modal must all use the same term for the same score.
+
 ## Output Structure
 
 Return a JSON object with this exact structure. Always use this format, even for a single location:

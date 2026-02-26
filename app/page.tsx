@@ -153,6 +153,13 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.8.1",
+    date: "Feb 25, 2026",
+    changes: [
+      "Fixed score/verdict label mismatch \u2014 verdict text now always matches the score bucket label exactly",
+    ],
+  },
+  {
     version: "v2.8",
     date: "Feb 25, 2026",
     changes: [
@@ -621,7 +628,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.8
+              v2.8.1
             </button>
           </div>
         </div>
