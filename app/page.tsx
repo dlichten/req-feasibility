@@ -88,6 +88,15 @@ interface AnalysisResult {
 
 const CHANGELOG = [
   {
+    version: "v2.3",
+    date: "Feb 25, 2026",
+    changes: [
+      "Fixed scoring logic: a single near-disqualifying requirement now floors the score at 85+ instead of being averaged down by reasonable requirements",
+      "Revised scoring bands: added 85-100 \"Critical / Near-impossible\" tier",
+      "Model now explicitly identifies bottleneck criteria in the summary",
+    ],
+  },
+  {
     version: "v2.2",
     date: "Feb 25, 2026",
     changes: [
@@ -137,7 +146,8 @@ const riskColors = {
 };
 
 function getScoreBand(score: number) {
-  if (score >= 76) return { label: "Critical Risk", color: "text-red-600", bg: "bg-red-500", track: "text-red-100" };
+  if (score >= 85) return { label: "Critical / Near-impossible", color: "text-red-700", bg: "bg-red-600", track: "text-red-100" };
+  if (score >= 76) return { label: "Very High Risk", color: "text-red-600", bg: "bg-red-500", track: "text-red-100" };
   if (score >= 56) return { label: "High Risk", color: "text-orange-500", bg: "bg-orange-500", track: "text-orange-100" };
   if (score >= 31) return { label: "Moderate Risk", color: "text-amber-500", bg: "bg-amber-500", track: "text-amber-100" };
   return { label: "Low Risk", color: "text-green-500", bg: "bg-green-500", track: "text-green-100" };
@@ -384,7 +394,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.2
+              v2.3
             </button>
           </div>
         </div>
