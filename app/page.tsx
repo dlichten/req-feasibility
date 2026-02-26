@@ -88,6 +88,13 @@ interface AnalysisResult {
 
 const CHANGELOG = [
   {
+    version: "v2.5",
+    date: "Feb 25, 2026",
+    changes: [
+      "Simplified analysis language for global recruiting teams \u2014 removed analytical jargon while keeping domain terminology and actionable specificity",
+    ],
+  },
+  {
     version: "v2.4",
     date: "Feb 25, 2026",
     changes: [
@@ -403,7 +410,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.4
+              v2.5
             </button>
           </div>
         </div>
