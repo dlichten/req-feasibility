@@ -1525,7 +1525,7 @@ export default function Home() {
             )}
 
             {/* === Flagged Requirements === */}
-            {loading && shared?.flags === undefined && (
+            {loading && singleAllFlags.length === 0 && (shared?.flags?.length ?? 0) === 0 && (
               <SectionSkeleton title="Flagged Requirements" message="Scanning screening criteria..." />
             )}
 
@@ -1589,7 +1589,7 @@ export default function Home() {
             })()}
 
             {/* === Alignment Notes === */}
-            {loading && shared?.alignmentNotes === undefined && (
+            {loading && singleAlignmentNotes.length === 0 && (shared?.alignmentNotes?.length ?? 0) === 0 && (
               <SectionSkeleton title="Alignment Notes" message="Checking JD alignment..." />
             )}
 
@@ -1630,7 +1630,7 @@ export default function Home() {
             )}
 
             {/* === Well-Calibrated Requirements === */}
-            {loading && shared?.wellCalibratedRequirements === undefined && (
+            {loading && (shared?.wellCalibratedRequirements?.length ?? 0) === 0 && (
               <SectionSkeleton title="Well-Calibrated Requirements" message="Identifying strong requirements..." />
             )}
 
@@ -1657,7 +1657,7 @@ export default function Home() {
             )}
 
             {/* === Revised Screening Criteria === */}
-            {loading && shared?.revisedScreeningCriteria === undefined && (
+            {loading && !shared?.revisedScreeningCriteria && (
               <SectionSkeleton title="Recommended Screening Criteria" message="Building recommended criteria..." />
             )}
 
@@ -1716,7 +1716,7 @@ export default function Home() {
             )}
 
             {/* === Recommendations === */}
-            {loading && shared?.recommendations === undefined && (
+            {loading && (shared?.recommendations?.length ?? 0) === 0 && (
               <SectionSkeleton title="Recommendations" message="Generating recommendations..." />
             )}
 
