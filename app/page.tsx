@@ -1093,7 +1093,7 @@ export default function Home() {
             className="relative w-full max-w-md bg-white shadow-xl h-full overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">{detailLocation.location}</h2>
                 <p className="text-xs text-gray-400">{detailLocation.workSetup}</p>
