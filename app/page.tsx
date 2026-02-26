@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { flushSync } from "react-dom";
-import { parse as parsePartialJSON } from "partial-json";
 
 const SAMPLE_REQ = `Senior Medical Billing Specialist
 Open
@@ -151,6 +149,15 @@ interface AnalysisResponse {
 // === Constants ===
 
 const CHANGELOG = [
+  {
+    version: "v2.7.1",
+    date: "Feb 25, 2026",
+    changes: [
+      "Location-specific notes now appear below alignment notes instead of at the bottom of the page",
+      "Fixed streaming display issue where results would jump during rendering",
+      "Fixed location selector: can now freely toggle between \u201cAll Philippines\u201d and specific PH sites without workaround",
+    ],
+  },
   {
     version: "v2.7",
     date: "Feb 25, 2026",
@@ -461,7 +468,6 @@ export default function Home() {
       const isSelected = prev.includes(id);
 
       if (isSelected) {
-        if (prev.length === 1) return prev;
         return prev.filter(x => x !== id);
       }
 
@@ -481,15 +487,6 @@ export default function Home() {
     });
 
     if (result) setResult(null);
-  }
-
-  function isLocationDisabled(id: string): boolean {
-    const location = getLocationById(id);
-    if (!location || location.isCountryWide) return false;
-    const country = getCountryForId(id);
-    if (!country) return false;
-    const countryWide = LOCATIONS[country].find(s => s.isCountryWide);
-    return countryWide ? selectedLocations.includes(countryWide.id) : false;
   }
 
   const showIndiaWarning = selectedLocations.includes("in-remote") && workSetup !== "Work From Home";
@@ -529,20 +526,6 @@ export default function Home() {
         if (done) break;
         text += decoder.decode(value, { stream: true });
         setStreamProgress(text.length);
-
-        const jsonStart = text.indexOf("{");
-        if (jsonStart < 0) continue;
-
-        try {
-          const partial = parsePartialJSON(text.slice(jsonStart));
-          if (partial && typeof partial === "object" && partial.locationResults?.[0]?.feasibilityScore !== undefined) {
-            flushSync(() => {
-              setResult(partial as AnalysisResponse);
-            });
-          }
-        } catch {
-          // Not enough tokens to parse yet
-        }
       }
 
       try {
@@ -592,7 +575,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.7
+              v2.7.1
             </button>
           </div>
         </div>
@@ -659,16 +642,13 @@ export default function Home() {
                     <div className="flex flex-wrap gap-1.5">
                       {sites.map(site => {
                         const isSelected = selectedLocations.includes(site.id);
-                        const disabled = isLocationDisabled(site.id);
                         return (
                           <button
                             key={site.id}
-                            onClick={() => !disabled && toggleLocation(site.id)}
+                            onClick={() => toggleLocation(site.id)}
                             className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
                               isSelected
                                 ? "bg-indigo-600 text-white border-indigo-600"
-                                : disabled
-                                ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
                                 : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
                             }`}
                           >
@@ -734,7 +714,7 @@ export default function Home() {
             <div className="mt-4 flex items-center gap-4">
               <button
                 onClick={analyze}
-                disabled={loading || !reqText.trim()}
+                disabled={loading || !reqText.trim() || selectedLocations.length === 0}
                 className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
                 {loading ? (
@@ -749,6 +729,9 @@ export default function Home() {
                   "Analyze Feasibility"
                 )}
               </button>
+              {selectedLocations.length === 0 && (
+                <span className="text-sm text-amber-600">Select at least one location</span>
+              )}
               {reqText && !loading && (
                 <button
                   onClick={() => { setReqText(""); setResult(null); setError(null); }}
@@ -981,6 +964,40 @@ export default function Home() {
               </div>
             )}
 
+            {/* === Multi-location: Location-Specific Notes === */}
+            {resultCount >= 2 && (
+              <div className="bg-white rounded-xl border shadow-sm p-6">
+                <h2 className="text-lg font-bold text-gray-900 mb-1">Location-Specific Notes</h2>
+                <p className="text-sm text-gray-500 mb-5">
+                  How each location&apos;s market affects feasibility for this requisition.
+                </p>
+                <div className="space-y-5">
+                  {result.locationResults.map((loc, i) => {
+                    const hasFlags = (loc.locationSpecificFlags?.length ?? 0) > 0;
+                    return (
+                      <div key={i} className={`rounded-lg border border-gray-200 p-4 ${i > 0 ? "" : ""}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <ScoreBadge score={loc.feasibilityScore} />
+                          <span className="font-bold text-gray-900">{loc.location}</span>
+                          <span className="text-xs text-gray-400">{loc.workSetup}</span>
+                        </div>
+                        {loc.narrative && (
+                          <p className="text-sm text-gray-700 leading-relaxed">{loc.narrative}</p>
+                        )}
+                        {hasFlags && (
+                          <div className="mt-3 space-y-2">
+                            {loc.locationSpecificFlags.map((flag, j) => (
+                              <FlagCard key={j} flag={flag} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* === Shared Analysis Sections (all counts) === */}
 
             {/* Well-Calibrated Requirements */}
@@ -1081,39 +1098,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* === Multi-location: Location-Specific Notes === */}
-            {resultCount >= 2 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Location-Specific Notes</h2>
-                <p className="text-sm text-gray-500 mb-5">
-                  How each location&apos;s market affects feasibility for this requisition.
-                </p>
-                <div className="space-y-5">
-                  {result.locationResults.map((loc, i) => {
-                    const hasFlags = (loc.locationSpecificFlags?.length ?? 0) > 0;
-                    return (
-                      <div key={i} className={`rounded-lg border border-gray-200 p-4 ${i > 0 ? "" : ""}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <ScoreBadge score={loc.feasibilityScore} />
-                          <span className="font-bold text-gray-900">{loc.location}</span>
-                          <span className="text-xs text-gray-400">{loc.workSetup}</span>
-                        </div>
-                        {loc.narrative && (
-                          <p className="text-sm text-gray-700 leading-relaxed">{loc.narrative}</p>
-                        )}
-                        {hasFlags && (
-                          <div className="mt-3 space-y-2">
-                            {loc.locationSpecificFlags.map((flag, j) => (
-                              <FlagCard key={j} flag={flag} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
