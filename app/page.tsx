@@ -153,6 +153,13 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.8.2",
+    date: "Feb 25, 2026",
+    changes: [
+      "Added skeleton loading states with contextual messages for each section during analysis",
+    ],
+  },
+  {
     version: "v2.8.1",
     date: "Feb 25, 2026",
     changes: [
@@ -437,6 +444,18 @@ function AlignmentCard({ note }: { note: AlignmentNote }) {
   );
 }
 
+function SectionSkeleton({ title, message }: { title: string; message: string }) {
+  return (
+    <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-6">
+      <h2 className="text-lg font-bold text-gray-300">{title}</h2>
+      <div className="flex items-center gap-2 mt-3">
+        <div className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-pulse" />
+        <p className="text-xs text-gray-400">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 function ScoreBadge({ score }: { score: number }) {
   const band = getScoreBand(score);
   return (
@@ -608,6 +627,12 @@ export default function Home() {
 
   const resultCount = result?.locationResults?.length || 0;
   const shared = result?.sharedAnalysis;
+  const hasScoreData = result?.locationResults?.[0]?.feasibilityScore !== undefined;
+  const singleLoc = resultCount === 1 ? result!.locationResults[0] : null;
+  const singleAllFlags = singleLoc
+    ? [...(shared?.flags || []), ...(singleLoc.locationSpecificFlags || [])]
+    : [];
+  const singleAlignmentNotes = resultCount === 1 ? (shared?.alignmentNotes || []) : [];
 
   return (
     <main className="min-h-screen">
@@ -628,7 +653,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.8.1
+              v2.8.2
             </button>
           </div>
         </div>
@@ -873,109 +898,60 @@ export default function Home() {
         )}
 
         {/* Results */}
-        {result && (result.locationResults?.length > 0 || (shared?.flags?.length ?? 0) > 0) && (
+        {(loading || (result && (result.locationResults?.length > 0 || (shared?.flags?.length ?? 0) > 0))) && (
           <div className="space-y-6">
 
-            {/* === Single Location: Score + Header === */}
-            {resultCount === 1 && (() => {
-              const loc = result.locationResults[0];
-              const allRiskFlags = [
-                ...(shared?.flags || []),
-                ...(loc.locationSpecificFlags || []),
-              ];
-              const alignmentNotes = shared?.alignmentNotes || [];
+            {/* === Score / Comparison === */}
+            {loading && !hasScoreData && (
+              <SectionSkeleton
+                title={selectedLocations.length === 1 ? "Feasibility Analysis" : "Feasibility Comparison"}
+                message="Scoring locations..."
+              />
+            )}
 
-              return (
-                <>
-                  {loc.feasibilityScore !== undefined && (
-                    <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                      <div className="flex items-center mb-2">
-                        <h2 className="text-lg font-bold text-gray-900">Feasibility Analysis</h2>
-                        {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
+            {/* Single Location: Score + Header */}
+            {singleLoc?.feasibilityScore !== undefined && (
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
+                <div className="flex items-center mb-2">
+                  <h2 className="text-lg font-bold text-gray-900">Feasibility Analysis</h2>
+                  {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
+                </div>
+                <p className="text-xs text-gray-400 mb-6">
+                  This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
+                </p>
+                <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
+                  <ScoreGauge score={singleLoc.feasibilityScore} />
+                  <div className="space-y-3">
+                    {singleLoc.verdict && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Assessment</span>
+                        <p className="text-base text-gray-800 mt-1">{singleLoc.verdict}</p>
                       </div>
-                      <p className="text-xs text-gray-400 mb-6">
-                        This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
-                      </p>
-                      <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
-                        <ScoreGauge score={loc.feasibilityScore} />
-                        <div className="space-y-3">
-                          {loc.verdict && (
-                            <div>
-                              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Assessment</span>
-                              <p className="text-base text-gray-800 mt-1">{loc.verdict}</p>
-                            </div>
-                          )}
-                          {loc.estimatedTimeToFill && (
-                            <div>
-                              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Estimated Time-to-Fill</span>
-                              <p className="text-base text-gray-800 mt-1 font-medium">{loc.estimatedTimeToFill}</p>
-                            </div>
-                          )}
-                          {loc.baselineTimeToFill && (
-                            <div>
-                              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Baseline for This Role</span>
-                              <p className="text-base text-gray-800 mt-1 font-medium">{loc.baselineTimeToFill}</p>
-                            </div>
-                          )}
-                          {loc.narrative && (
-                            <div>
-                              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</span>
-                              <p className="text-sm text-gray-700 mt-1 leading-relaxed">{loc.narrative}</p>
-                            </div>
-                          )}
-                        </div>
+                    )}
+                    {singleLoc.estimatedTimeToFill && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Estimated Time-to-Fill</span>
+                        <p className="text-base text-gray-800 mt-1 font-medium">{singleLoc.estimatedTimeToFill}</p>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {singleLoc.baselineTimeToFill && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Baseline for This Role</span>
+                        <p className="text-base text-gray-800 mt-1 font-medium">{singleLoc.baselineTimeToFill}</p>
+                      </div>
+                    )}
+                    {singleLoc.narrative && (
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</span>
+                        <p className="text-sm text-gray-700 mt-1 leading-relaxed">{singleLoc.narrative}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
-                  {/* Flagged Requirements (combined shared + location-specific) */}
-                  {allRiskFlags.length > 0 && (
-                    <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                      <div className="flex items-center mb-1">
-                        <h2 className="text-lg font-bold text-gray-900">
-                          Flagged Requirements
-                          <span className="ml-2 text-sm font-normal text-gray-500">
-                            ({allRiskFlags.length}{loading ? "+" : ""} found)
-                          </span>
-                        </h2>
-                        {!loading && <SectionFeedback section="flags" feedback={feedback.flags} onFeedback={handleFeedback} />}
-                      </div>
-                      <p className="text-sm text-gray-500 mb-5">
-                        Requirements that may narrow your candidate pool and extend time-to-fill.
-                      </p>
-                      <div className="space-y-4">
-                        {allRiskFlags.map((flag, i) => (
-                          <FlagCard key={i} flag={flag} />
-                        ))}
-                      </div>
-                      <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
-                        Pool reduction estimates are directional, based on AI analysis of offshore staffing market patterns. Validate against internal pipeline data for specific roles.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Alignment Notes */}
-                  {alignmentNotes.length > 0 && (
-                    <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                      <div className="flex items-center mb-1">
-                        <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
-                        {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
-                      </div>
-                      <p className="text-sm text-gray-500 mb-5">
-                        Potential mismatches between job description and screening criteria.
-                      </p>
-                      <div className="space-y-4">
-                        {alignmentNotes.map((note, i) => (
-                          <AlignmentCard key={i} note={note} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-
-            {/* === Multi-location: 2-3 Side-by-Side Cards === */}
+            {/* Multi-location: 2-3 Side-by-Side Cards */}
             {resultCount >= 2 && resultCount <= 3 && (
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
@@ -986,7 +962,7 @@ export default function Home() {
                   This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
                 </p>
                 <div className={`grid gap-4 ${resultCount === 2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>
-                  {result.locationResults.map((loc, i) => (
+                  {result!.locationResults.map((loc, i) => (
                     loc.feasibilityScore !== undefined && (
                       <div key={i} className="rounded-xl border border-gray-200 p-5">
                         <h3 className="text-sm font-bold text-gray-900 mb-1">{loc.location}</h3>
@@ -1025,7 +1001,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* === Multi-location: 4+ Summary Table === */}
+            {/* Multi-location: 4+ Summary Table */}
             {resultCount >= 4 && (
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
@@ -1048,7 +1024,7 @@ export default function Home() {
                       </tr>
                     </thead>
                     <tbody>
-                      {result.locationResults.map((loc, i) => (
+                      {result!.locationResults.map((loc, i) => (
                         <tr key={i} className="border-b border-gray-100 last:border-0">
                           <td className="py-3 pr-4 font-medium text-gray-900">{loc.location}</td>
                           <td className="py-3 px-4 text-center"><ScoreBadge score={loc.feasibilityScore} /></td>
@@ -1073,7 +1049,38 @@ export default function Home() {
               </div>
             )}
 
-            {/* === Multi-location: Shared Flagged Requirements === */}
+            {/* === Flagged Requirements === */}
+            {loading && shared?.flags === undefined && (
+              <SectionSkeleton title="Flagged Requirements" message="Scanning screening criteria..." />
+            )}
+
+            {/* Single location: combined shared + location-specific flags */}
+            {resultCount === 1 && singleAllFlags.length > 0 && (
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
+                <div className="flex items-center mb-1">
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Flagged Requirements
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      ({singleAllFlags.length}{loading ? "+" : ""} found)
+                    </span>
+                  </h2>
+                  {!loading && <SectionFeedback section="flags" feedback={feedback.flags} onFeedback={handleFeedback} />}
+                </div>
+                <p className="text-sm text-gray-500 mb-5">
+                  Requirements that may narrow your candidate pool and extend time-to-fill.
+                </p>
+                <div className="space-y-4">
+                  {singleAllFlags.map((flag, i) => (
+                    <FlagCard key={i} flag={flag} />
+                  ))}
+                </div>
+                <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
+                  Pool reduction estimates are directional, based on AI analysis of offshore staffing market patterns. Validate against internal pipeline data for specific roles.
+                </p>
+              </div>
+            )}
+
+            {/* Multi-location: shared flags */}
             {resultCount >= 2 && (shared?.flags?.length ?? 0) > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
@@ -1099,7 +1106,30 @@ export default function Home() {
               </div>
             )}
 
-            {/* === Multi-location: Shared Alignment Notes === */}
+            {/* === Alignment Notes === */}
+            {loading && shared?.alignmentNotes === undefined && (
+              <SectionSkeleton title="Alignment Notes" message="Checking JD alignment..." />
+            )}
+
+            {/* Single location alignment */}
+            {resultCount === 1 && singleAlignmentNotes.length > 0 && (
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
+                <div className="flex items-center mb-1">
+                  <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
+                  {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
+                </div>
+                <p className="text-sm text-gray-500 mb-5">
+                  Potential mismatches between job description and screening criteria.
+                </p>
+                <div className="space-y-4">
+                  {singleAlignmentNotes.map((note, i) => (
+                    <AlignmentCard key={i} note={note} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Multi-location alignment */}
             {resultCount >= 2 && (shared?.alignmentNotes?.length ?? 0) > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
@@ -1117,9 +1147,11 @@ export default function Home() {
               </div>
             )}
 
-            {/* === Shared Analysis Sections (all counts) === */}
+            {/* === Well-Calibrated Requirements === */}
+            {loading && shared?.wellCalibratedRequirements === undefined && (
+              <SectionSkeleton title="Well-Calibrated Requirements" message="Identifying strong requirements..." />
+            )}
 
-            {/* Well-Calibrated Requirements */}
             {(shared?.wellCalibratedRequirements?.length ?? 0) > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center gap-2 mb-4">
@@ -1142,7 +1174,11 @@ export default function Home() {
               </div>
             )}
 
-            {/* Revised Screening Criteria */}
+            {/* === Revised Screening Criteria === */}
+            {loading && shared?.revisedScreeningCriteria === undefined && (
+              <SectionSkeleton title="Recommended Screening Criteria" message="Building recommended criteria..." />
+            )}
+
             {shared?.revisedScreeningCriteria && (
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
@@ -1197,7 +1233,11 @@ export default function Home() {
               </div>
             )}
 
-            {/* Recommendations */}
+            {/* === Recommendations === */}
+            {loading && shared?.recommendations === undefined && (
+              <SectionSkeleton title="Recommendations" message="Generating recommendations..." />
+            )}
+
             {(shared?.recommendations?.length ?? 0) > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-4">
