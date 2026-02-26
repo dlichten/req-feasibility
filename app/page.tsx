@@ -1201,9 +1201,9 @@ export default function Home() {
                     return (
                       <div key={country} className="flex items-center gap-2">
                         {selectedCountries.length > 1 && (
-                          <span className="text-xs font-medium text-gray-400 w-20 flex-shrink-0">{country}</span>
+                          <span className="text-xs font-medium text-gray-400 w-[100px] flex-shrink-0">{country}</span>
                         )}
-                        <span className="text-sm text-gray-400 font-medium">{cur.code}</span>
+                        <span className="text-sm text-gray-400 font-medium w-10 flex-shrink-0">{cur.code}</span>
                         <input
                           type="number"
                           min="0"
