@@ -1122,12 +1122,6 @@ export default function Home() {
         {/* Input Section */}
         <div className="bg-white rounded-xl border shadow-sm">
           <div className="p-6">
-            {!reqText && !result && (
-              <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-                Paste a job requisition to get an instant feasibility assessment. The analyzer flags niche software requirements, stacked specializations, and other factors that extend time-to-fill.
-              </p>
-            )}
-
             {/* Location Selector */}
             <div className="mb-4">
               <span className="text-sm font-semibold text-gray-700 block mb-2">Locations</span>
