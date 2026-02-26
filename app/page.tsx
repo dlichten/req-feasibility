@@ -72,7 +72,7 @@ interface TrainableSkill {
 }
 
 interface AnalysisResult {
-  overallScore: number;
+  feasibilityScore: number;
   overallVerdict: string;
   estimatedTimeToFill: string;
   summary: string;
@@ -87,6 +87,15 @@ interface AnalysisResult {
 }
 
 const CHANGELOG = [
+  {
+    version: "v2.4",
+    date: "Feb 25, 2026",
+    changes: [
+      "Inverted scoring: now a Feasibility Score (higher = more fillable) instead of a Risk Score (higher = worse)",
+      "Updated score thresholds and labels to match",
+      "Donut chart color now green (high feasibility) to red (low feasibility)",
+    ],
+  },
   {
     version: "v2.3",
     date: "Feb 25, 2026",
@@ -146,11 +155,11 @@ const riskColors = {
 };
 
 function getScoreBand(score: number) {
-  if (score >= 85) return { label: "Critical / Near-impossible", color: "text-red-700", bg: "bg-red-600", track: "text-red-100" };
-  if (score >= 76) return { label: "Very High Risk", color: "text-red-600", bg: "bg-red-500", track: "text-red-100" };
-  if (score >= 56) return { label: "High Risk", color: "text-orange-500", bg: "bg-orange-500", track: "text-orange-100" };
-  if (score >= 31) return { label: "Moderate Risk", color: "text-amber-500", bg: "bg-amber-500", track: "text-amber-100" };
-  return { label: "Low Risk", color: "text-green-500", bg: "bg-green-500", track: "text-green-100" };
+  if (score >= 80) return { label: "High Feasibility", color: "text-green-600", bg: "bg-green-500", track: "text-green-100" };
+  if (score >= 55) return { label: "Moderate Feasibility", color: "text-amber-500", bg: "bg-amber-500", track: "text-amber-100" };
+  if (score >= 25) return { label: "Low Feasibility", color: "text-orange-500", bg: "bg-orange-500", track: "text-orange-100" };
+  if (score >= 16) return { label: "Very Low Feasibility", color: "text-red-500", bg: "bg-red-500", track: "text-red-100" };
+  return { label: "Near-Impossible", color: "text-red-700", bg: "bg-red-600", track: "text-red-100" };
 }
 
 function ScoreGauge({ score }: { score: number }) {
@@ -337,7 +346,7 @@ export default function Home() {
 
         try {
           const partial = parsePartialJSON(text.slice(jsonStart));
-          if (partial && typeof partial === "object" && partial.overallScore !== undefined) {
+          if (partial && typeof partial === "object" && partial.feasibilityScore !== undefined) {
             flushSync(() => {
               setResult(partial as AnalysisResult);
             });
@@ -394,7 +403,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.3
+              v2.4
             </button>
           </div>
         </div>
@@ -447,7 +456,7 @@ export default function Home() {
           <div className="p-6">
             {!reqText && !result && (
               <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-                Paste a job requisition to get an instant feasibility risk assessment. The analyzer flags niche software requirements, stacked specializations, and other factors that extend time-to-fill.
+                Paste a job requisition to get an instant feasibility assessment. The analyzer flags niche software requirements, stacked specializations, and other factors that extend time-to-fill.
               </p>
             )}
             {/* Market Selector */}
@@ -532,7 +541,7 @@ export default function Home() {
         {result && (
           <div className="space-y-6 animate-fade-in">
             {/* a. Score + Header */}
-            {result.overallScore !== undefined && (
+            {result.feasibilityScore !== undefined && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
                 <div className="flex items-center mb-2">
                   <h2 className="text-lg font-bold text-gray-900">Feasibility Analysis</h2>
@@ -542,7 +551,7 @@ export default function Home() {
                   This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
                 </p>
                 <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
-                  <ScoreGauge score={result.overallScore} />
+                  <ScoreGauge score={result.feasibilityScore} />
                   <div className="space-y-3">
                     {result.overallVerdict && (
                       <div>
