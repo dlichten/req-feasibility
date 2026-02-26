@@ -1010,8 +1010,8 @@ export default function Home() {
                   </div>
                   <ul className="space-y-1.5">
                     {entry.changes.map((change, i) => (
-                      <li key={i} className="text-sm text-gray-600 leading-relaxed flex gap-2">
-                        <span className="text-gray-300 mt-1.5 flex-shrink-0">&bull;</span>
+                      <li key={i} className="text-sm text-gray-600 leading-relaxed flex items-baseline gap-2">
+                        <span className="text-gray-300 flex-shrink-0">&bull;</span>
                         <span>{change}</span>
                       </li>
                     ))}
@@ -1147,43 +1147,37 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Work Setup Selector */}
-            <div className="mb-4">
-              <span className="text-sm font-semibold text-gray-700 block mb-2">Work Setup</span>
-              <div className="flex gap-1.5">
-                {WORK_SETUPS.map(ws => (
-                  <button
-                    key={ws}
-                    onClick={() => { setWorkSetup(ws); if (result) setResult(null); }}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-                      workSetup === ws
-                        ? "bg-indigo-600 text-white border-indigo-600"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
-                    }`}
-                  >
-                    {ws}
-                  </button>
-                ))}
+            {/* Work Setup + Shift Type */}
+            <div className="mb-4 flex flex-wrap items-end gap-4">
+              <div>
+                <span className="text-sm font-semibold text-gray-700 block mb-2">Work Setup</span>
+                <div className="flex gap-1.5">
+                  {WORK_SETUPS.map(ws => (
+                    <button
+                      key={ws}
+                      onClick={() => { setWorkSetup(ws); if (result) setResult(null); }}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                        workSetup === ws
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                      }`}
+                    >
+                      {ws}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-
-            {/* Shift Type Selector */}
-            <div className="mb-4">
-              <span className="text-sm font-semibold text-gray-700 block mb-2">Shift Type</span>
-              <div className="flex flex-wrap gap-1.5">
-                {SHIFT_TYPES.map(st => (
-                  <button
-                    key={st}
-                    onClick={() => { setShiftType(st); if (result) setResult(null); }}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-                      shiftType === st
-                        ? "bg-indigo-600 text-white border-indigo-600"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
+              <div>
+                <span className="text-sm font-semibold text-gray-700 block mb-2">Shift</span>
+                <select
+                  value={shiftType}
+                  onChange={(e) => { setShiftType(e.target.value as ShiftType); if (result) setResult(null); }}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none cursor-pointer"
+                >
+                  {SHIFT_TYPES.map(st => (
+                    <option key={st} value={st}>{st}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
