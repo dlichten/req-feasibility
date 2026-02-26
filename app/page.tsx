@@ -346,6 +346,12 @@ const CHANGELOG = [
   },
 ];
 
+const RISK_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+function sortFlags<T extends { riskLevel: string }>(flags: T[]): T[] {
+  return [...flags].sort((a, b) => (RISK_ORDER[a.riskLevel] ?? 3) - (RISK_ORDER[b.riskLevel] ?? 3));
+}
+
 const riskColors = {
   high: { bg: "bg-red-50", border: "border-red-200", badge: "bg-red-100 text-red-800", icon: "text-red-500" },
   medium: { bg: "bg-amber-50", border: "border-amber-200", badge: "bg-amber-100 text-amber-800", icon: "text-amber-500" },
@@ -954,7 +960,7 @@ export default function Home() {
   const hasScoreData = result?.locationResults?.[0]?.feasibilityScore !== undefined;
   const singleLoc = resultCount === 1 ? result!.locationResults[0] : null;
   const singleAllFlags = singleLoc
-    ? [...(shared?.flags || []), ...(singleLoc.locationSpecificFlags || [])]
+    ? sortFlags([...(shared?.flags || []), ...(singleLoc.locationSpecificFlags || [])])
     : [];
   const singleAlignmentNotes = resultCount === 1 ? (shared?.alignmentNotes || []) : [];
 
@@ -1541,8 +1547,10 @@ export default function Home() {
                   Requirements that may narrow your candidate pool and extend time-to-fill.
                 </p>
                 <div className="space-y-4">
-                  {singleAllFlags.map((flag, i) => (
-                    <FlagCard key={i} flag={flag} flagFeedback={flagFeedbackState[flag.requirement]} onFlagFeedback={handleFlagFeedback} />
+                  {singleAllFlags.map((flag) => (
+                    <div key={flag.requirement} className="animate-fade-in transition-all duration-300 ease-out">
+                      <FlagCard flag={flag} flagFeedback={flagFeedbackState[flag.requirement]} onFlagFeedback={handleFlagFeedback} />
+                    </div>
                   ))}
                 </div>
                 <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
@@ -1552,13 +1560,15 @@ export default function Home() {
             )}
 
             {/* Multi-location: shared flags */}
-            {resultCount >= 2 && (shared?.flags?.length ?? 0) > 0 && (
+            {resultCount >= 2 && (shared?.flags?.length ?? 0) > 0 && (() => {
+              const sortedSharedFlags = sortFlags(shared!.flags);
+              return (
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
                   <h2 className="text-lg font-bold text-gray-900">
                     Flagged Requirements
                     <span className="ml-2 text-sm font-normal text-gray-500">
-                      ({shared!.flags.length} found)
+                      ({sortedSharedFlags.length} found)
                     </span>
                   </h2>
                   {!loading && <SectionFeedback section="flags" feedback={feedback.flags} onFeedback={handleFeedback} />}
@@ -1567,15 +1577,18 @@ export default function Home() {
                   Requirements that may narrow your candidate pool and extend time-to-fill. These apply across all locations.
                 </p>
                 <div className="space-y-4">
-                  {shared!.flags.map((flag, i) => (
-                    <FlagCard key={i} flag={flag} flagFeedback={flagFeedbackState[flag.requirement]} onFlagFeedback={handleFlagFeedback} />
+                  {sortedSharedFlags.map((flag) => (
+                    <div key={flag.requirement} className="animate-fade-in transition-all duration-300 ease-out">
+                      <FlagCard flag={flag} flagFeedback={flagFeedbackState[flag.requirement]} onFlagFeedback={handleFlagFeedback} />
+                    </div>
                   ))}
                 </div>
                 <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
                   Pool reduction estimates are directional, based on AI analysis of offshore staffing market patterns. Validate against internal pipeline data for specific roles.
                 </p>
               </div>
-            )}
+              );
+            })()}
 
             {/* === Alignment Notes === */}
             {loading && shared?.alignmentNotes === undefined && (
