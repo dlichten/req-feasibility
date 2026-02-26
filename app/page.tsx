@@ -881,6 +881,10 @@ export default function Home() {
 
   function loadSample() {
     setReqText(SAMPLE_REQ);
+    setSelectedLocations(["ph-all"]);
+    setWorkSetup("Work From Home");
+    setShiftType("Nightshift (Weekends Off)");
+    setCompensation({ Philippines: { min: "38000", max: "45000" } });
     setResult(null);
   }
 
