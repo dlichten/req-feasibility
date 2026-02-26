@@ -127,6 +127,7 @@ interface LocationResult {
   feasibilityScore: number;
   verdict: string;
   estimatedTimeToFill: string;
+  baselineTimeToFill: string;
   narrative: string;
   locationSpecificFlags: RiskFlag[];
 }
@@ -152,11 +153,19 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.8",
+    date: "Feb 25, 2026",
+    changes: [
+      "Removed hardcoded 56-day benchmark \u2014 tool now estimates role-specific baseline fill times",
+      "Assessment now shows both estimated TTF and baseline TTF so users can see the gap caused by overly specific requirements",
+    ],
+  },
+  {
     version: "v2.7.3",
     date: "Feb 25, 2026",
     changes: [
       "Moved location-specific notes into a \"View details\" panel accessible from each location in the comparison table",
-      "Removed location-specific notes as a standalone page section — shorter, more scannable results",
+      "Removed location-specific notes as a standalone page section \u2014 shorter, more scannable results",
       "Fixed rendering order issue where location notes painted before flagged requirements",
     ],
   },
@@ -612,7 +621,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.7.3
+              v2.8
             </button>
           </div>
         </div>
@@ -695,6 +704,12 @@ export default function Home() {
                 <div>
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Estimated Time-to-Fill</span>
                   <p className="text-sm text-gray-800 mt-1 font-medium">{detailLocation.estimatedTimeToFill}</p>
+                </div>
+              )}
+              {detailLocation.baselineTimeToFill && (
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Baseline for This Role</span>
+                  <p className="text-sm text-gray-800 mt-1 font-medium">{detailLocation.baselineTimeToFill}</p>
                 </div>
               )}
               {detailLocation.narrative && (
@@ -889,6 +904,12 @@ export default function Home() {
                               <p className="text-base text-gray-800 mt-1 font-medium">{loc.estimatedTimeToFill}</p>
                             </div>
                           )}
+                          {loc.baselineTimeToFill && (
+                            <div>
+                              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Baseline for This Role</span>
+                              <p className="text-base text-gray-800 mt-1 font-medium">{loc.baselineTimeToFill}</p>
+                            </div>
+                          )}
                           {loc.narrative && (
                             <div>
                               <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</span>
@@ -974,6 +995,11 @@ export default function Home() {
                             <span className="font-semibold">TTF:</span> {loc.estimatedTimeToFill}
                           </p>
                         )}
+                        {loc.baselineTimeToFill && (
+                          <p className="text-xs text-gray-400">
+                            <span className="font-semibold">Baseline:</span> {loc.baselineTimeToFill}
+                          </p>
+                        )}
                         {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
                           <button
                             onClick={() => setDetailLocation(loc)}
@@ -1010,6 +1036,7 @@ export default function Home() {
                         <th className="text-center py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Score</th>
                         <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Verdict</th>
                         <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">TTF</th>
+                        <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Baseline</th>
                         <th className="py-2 pl-4"></th>
                       </tr>
                     </thead>
@@ -1020,6 +1047,7 @@ export default function Home() {
                           <td className="py-3 px-4 text-center"><ScoreBadge score={loc.feasibilityScore} /></td>
                           <td className="py-3 px-4 text-gray-700">{loc.verdict}</td>
                           <td className="py-3 px-4 text-gray-600">{loc.estimatedTimeToFill}</td>
+                          <td className="py-3 px-4 text-gray-400">{loc.baselineTimeToFill}</td>
                           <td className="py-3 pl-4">
                             {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
                               <button
