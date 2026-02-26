@@ -153,6 +153,16 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.9",
+    date: "Feb 25, 2026",
+    changes: [
+      "Thumbs up/down on overall assessment now saves feedback to Notion for calibration tracking",
+      "Per-flag agree/disagree thumbs on flagged requirements for fine-grained calibration data",
+      "Gentle nudge prompts after 15 seconds or scrolling to recommendations",
+      "Optional text input for notes when providing feedback",
+    ],
+  },
+  {
     version: "v2.8.2",
     date: "Feb 25, 2026",
     changes: [
@@ -380,7 +390,11 @@ function SectionFeedback({ section, feedback, onFeedback }: {
   );
 }
 
-function FlagCard({ flag }: { flag: RiskFlag }) {
+function FlagCard({ flag, flagFeedback, onFlagFeedback }: {
+  flag: RiskFlag;
+  flagFeedback?: "agree" | "disagree" | null;
+  onFlagFeedback?: (requirement: string, value: "agree" | "disagree" | null) => void;
+}) {
   if (!flag.riskLevel || !flag.requirement) return null;
   const c = riskColors[flag.riskLevel] || riskColors.medium;
   return (
@@ -403,6 +417,36 @@ function FlagCard({ flag }: { flag: RiskFlag }) {
               {flag.riskLevel.toUpperCase()}
             </span>
             {flag.category && <span className="text-xs text-gray-500 font-medium">{flag.category}</span>}
+            {onFlagFeedback && (
+              <div className="flex items-center gap-0.5 ml-auto">
+                <button
+                  onClick={() => onFlagFeedback(flag.requirement, flagFeedback === "agree" ? null : "agree")}
+                  className={`p-0.5 rounded transition-colors ${
+                    flagFeedback === "agree"
+                      ? "text-green-600 bg-green-50"
+                      : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+                  }`}
+                  title="Agree with this flag"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onFlagFeedback(flag.requirement, flagFeedback === "disagree" ? null : "disagree")}
+                  className={`p-0.5 rounded transition-colors ${
+                    flagFeedback === "disagree"
+                      ? "text-red-500 bg-red-50"
+                      : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+                  }`}
+                  title="Disagree with this flag"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 01-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 011.423.23l3.114 1.04a4.5 4.5 0 001.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 007.5 19.75 2.25 2.25 0 009.75 22a.75.75 0 00.75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 002.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.31-.269 2.56-.754 3.695" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
           <p className="text-sm font-semibold text-gray-900 mb-1">{flag.requirement}</p>
           {flag.explanation && <p className="text-sm text-gray-700 mb-2">{flag.explanation}</p>}
@@ -456,6 +500,86 @@ function SectionSkeleton({ title, message }: { title: string; message: string })
   );
 }
 
+function OverallFeedback({
+  overallFeedback,
+  onThumb,
+  feedbackNotes,
+  onNotesChange,
+  onSubmit,
+  feedbackSent,
+  feedbackNudge,
+  showInput,
+}: {
+  overallFeedback: FeedbackValue;
+  onThumb: (value: FeedbackValue) => void;
+  feedbackNotes: string;
+  onNotesChange: (v: string) => void;
+  onSubmit: () => void;
+  feedbackSent: boolean;
+  feedbackNudge: boolean;
+  showInput: boolean;
+}) {
+  return (
+    <div className="ml-auto flex flex-col items-end">
+      <div className="flex items-center gap-1.5">
+        {feedbackSent && <span className="text-xs text-gray-400 mr-1">Feedback saved</span>}
+        {!feedbackSent && feedbackNudge && !overallFeedback && (
+          <span className="text-xs text-gray-400 mr-1">Was this accurate?</span>
+        )}
+        <button
+          onClick={() => onThumb(overallFeedback === "up" ? null : "up")}
+          disabled={feedbackSent}
+          className={`p-1 rounded transition-colors ${
+            overallFeedback === "up"
+              ? "text-green-600 bg-green-50"
+              : feedbackNudge && !overallFeedback
+                ? "text-gray-400 hover:text-gray-500 hover:bg-gray-50 animate-pulse"
+                : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+          } ${feedbackSent ? "opacity-60 cursor-default" : ""}`}
+          title="Accurate"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" />
+          </svg>
+        </button>
+        <button
+          onClick={() => onThumb(overallFeedback === "down" ? null : "down")}
+          disabled={feedbackSent}
+          className={`p-1 rounded transition-colors ${
+            overallFeedback === "down"
+              ? "text-red-500 bg-red-50"
+              : feedbackNudge && !overallFeedback
+                ? "text-gray-400 hover:text-gray-500 hover:bg-gray-50 animate-pulse"
+                : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+          } ${feedbackSent ? "opacity-60 cursor-default" : ""}`}
+          title="Not accurate"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 01-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 011.423.23l3.114 1.04a4.5 4.5 0 001.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 007.5 19.75 2.25 2.25 0 009.75 22a.75.75 0 00.75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 002.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.31-.269 2.56-.754 3.695" />
+          </svg>
+        </button>
+      </div>
+      {showInput && !feedbackSent && (
+        <div className="mt-3 w-full max-w-sm flex gap-2">
+          <input
+            type="text"
+            value={feedbackNotes}
+            onChange={(e) => onNotesChange(e.target.value)}
+            placeholder="Optional: what was off?"
+            className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none"
+          />
+          <button
+            onClick={onSubmit}
+            className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Submit
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ScoreBadge({ score }: { score: number }) {
   const band = getScoreBand(score);
   return (
@@ -479,6 +603,17 @@ export default function Home() {
   const [showChangelog, setShowChangelog] = useState(false);
   const [detailLocation, setDetailLocation] = useState<LocationResult | null>(null);
   const prevTextLenRef = useRef(0);
+
+  // Feedback loop state
+  const [overallFeedback, setOverallFeedback] = useState<FeedbackValue>(null);
+  const [flagFeedbackState, setFlagFeedbackState] = useState<Record<string, "agree" | "disagree" | null>>({});
+  const [feedbackNotes, setFeedbackNotes] = useState("");
+  const [showFeedbackInput, setShowFeedbackInput] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [feedbackNudge, setFeedbackNudge] = useState(false);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recommendationsRef = useRef<HTMLDivElement>(null);
 
   // Auto-detect work setup and locations from pasted text
   useEffect(() => {
@@ -515,6 +650,38 @@ export default function Home() {
       setSelectedLocations(detected);
     }
   }, [reqText]);
+
+  // Nudge timing: 15s timer or scroll to recommendations
+  useEffect(() => {
+    if (loading || !result) return;
+
+    let nudgeTimer: ReturnType<typeof setTimeout> | null = null;
+    let observer: IntersectionObserver | null = null;
+    let nudged = false;
+
+    const triggerNudge = () => {
+      if (nudged) return;
+      nudged = true;
+      setFeedbackNudge(true);
+      if (nudgeTimer) clearTimeout(nudgeTimer);
+      if (observer) observer.disconnect();
+    };
+
+    nudgeTimer = setTimeout(triggerNudge, 15000);
+
+    if (recommendationsRef.current) {
+      observer = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) triggerNudge(); },
+        { threshold: 0.5 }
+      );
+      observer.observe(recommendationsRef.current);
+    }
+
+    return () => {
+      if (nudgeTimer) clearTimeout(nudgeTimer);
+      if (observer) observer.disconnect();
+    };
+  }, [loading, result]);
 
   function toggleLocation(id: string) {
     const location = getLocationById(id);
@@ -555,6 +722,17 @@ export default function Home() {
     setStreamProgress(0);
     setFeedback({});
     setDetailLocation(null);
+    setOverallFeedback(null);
+    setFlagFeedbackState({});
+    setFeedbackNotes("");
+    setShowFeedbackInput(false);
+    setFeedbackSent(false);
+    setShowToast(false);
+    setFeedbackNudge(false);
+    if (feedbackTimerRef.current) {
+      clearTimeout(feedbackTimerRef.current);
+      feedbackTimerRef.current = null;
+    }
 
     const locationLabels = selectedLocations
       .map(id => getLocationById(id)?.label)
@@ -625,6 +803,77 @@ export default function Home() {
     setResult(null);
   }
 
+  function extractReqMeta(text: string) {
+    const lines = text.trim().split("\n");
+    const title = lines[0]?.trim() || "Untitled";
+    const numMatch = text.match(/#(\d+)/);
+    const reqNumber = numMatch ? `#${numMatch[1]}` : "";
+    return { title, reqNumber };
+  }
+
+  function handleOverallFeedback(value: FeedbackValue) {
+    if (feedbackSent) return;
+    setOverallFeedback(value);
+    setShowFeedbackInput(value !== null);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    if (value !== null) {
+      feedbackTimerRef.current = setTimeout(() => {
+        submitFeedback(value);
+      }, 3000);
+    }
+  }
+
+  function handleFlagFeedback(requirement: string, value: "agree" | "disagree" | null) {
+    setFlagFeedbackState(prev => ({ ...prev, [requirement]: value }));
+  }
+
+  async function submitFeedback(thumbOverride?: FeedbackValue) {
+    const thumb = thumbOverride ?? overallFeedback;
+    if (!thumb || feedbackSent || !result) return;
+    if (feedbackTimerRef.current) {
+      clearTimeout(feedbackTimerRef.current);
+      feedbackTimerRef.current = null;
+    }
+    setFeedbackSent(true);
+
+    const { title, reqNumber } = extractReqMeta(reqText);
+    const locationLabels = selectedLocations
+      .map(id => getLocationById(id)?.label)
+      .filter(Boolean) as string[];
+    const firstLoc = result.locationResults?.[0];
+
+    const filteredFlagFeedback: Record<string, "agree" | "disagree"> = {};
+    for (const [k, v] of Object.entries(flagFeedbackState)) {
+      if (v) filteredFlagFeedback[k] = v;
+    }
+
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reqTitle: title,
+          reqNumber,
+          locations: locationLabels,
+          workSetup,
+          feasibilityScore: firstLoc?.feasibilityScore ?? null,
+          baselineTTF: firstLoc?.baselineTimeToFill ?? "",
+          estimatedTTF: firstLoc?.estimatedTimeToFill ?? "",
+          overallFeedback: thumb,
+          flagFeedback: filteredFlagFeedback,
+          userNotes: feedbackNotes,
+          reqText,
+          analysisJSON: JSON.stringify(result),
+        }),
+      });
+    } catch {
+      // fail silently
+    }
+
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  }
+
   const resultCount = result?.locationResults?.length || 0;
   const shared = result?.sharedAnalysis;
   const hasScoreData = result?.locationResults?.[0]?.feasibilityScore !== undefined;
@@ -653,7 +902,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.8.2
+              v2.9
             </button>
           </div>
         </div>
@@ -914,7 +1163,18 @@ export default function Home() {
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
                   <h2 className="text-lg font-bold text-gray-900">Feasibility Analysis</h2>
-                  {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
+                  {!loading && (
+                    <OverallFeedback
+                      overallFeedback={overallFeedback}
+                      onThumb={handleOverallFeedback}
+                      feedbackNotes={feedbackNotes}
+                      onNotesChange={setFeedbackNotes}
+                      onSubmit={() => submitFeedback()}
+                      feedbackSent={feedbackSent}
+                      feedbackNudge={feedbackNudge}
+                      showInput={showFeedbackInput}
+                    />
+                  )}
                 </div>
                 <p className="text-xs text-gray-400 mb-6">
                   This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
@@ -956,7 +1216,18 @@ export default function Home() {
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
                   <h2 className="text-lg font-bold text-gray-900">Feasibility Comparison</h2>
-                  {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
+                  {!loading && (
+                    <OverallFeedback
+                      overallFeedback={overallFeedback}
+                      onThumb={handleOverallFeedback}
+                      feedbackNotes={feedbackNotes}
+                      onNotesChange={setFeedbackNotes}
+                      onSubmit={() => submitFeedback()}
+                      feedbackSent={feedbackSent}
+                      feedbackNudge={feedbackNudge}
+                      showInput={showFeedbackInput}
+                    />
+                  )}
                 </div>
                 <p className="text-xs text-gray-400 mb-6">
                   This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
@@ -1006,7 +1277,18 @@ export default function Home() {
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
                   <h2 className="text-lg font-bold text-gray-900">Feasibility Comparison</h2>
-                  {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
+                  {!loading && (
+                    <OverallFeedback
+                      overallFeedback={overallFeedback}
+                      onThumb={handleOverallFeedback}
+                      feedbackNotes={feedbackNotes}
+                      onNotesChange={setFeedbackNotes}
+                      onSubmit={() => submitFeedback()}
+                      feedbackSent={feedbackSent}
+                      feedbackNudge={feedbackNudge}
+                      showInput={showFeedbackInput}
+                    />
+                  )}
                 </div>
                 <p className="text-xs text-gray-400 mb-6">
                   This is a directional assessment to support your review — not a final determination.
@@ -1071,7 +1353,7 @@ export default function Home() {
                 </p>
                 <div className="space-y-4">
                   {singleAllFlags.map((flag, i) => (
-                    <FlagCard key={i} flag={flag} />
+                    <FlagCard key={i} flag={flag} flagFeedback={flagFeedbackState[flag.requirement]} onFlagFeedback={handleFlagFeedback} />
                   ))}
                 </div>
                 <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
@@ -1097,7 +1379,7 @@ export default function Home() {
                 </p>
                 <div className="space-y-4">
                   {shared!.flags.map((flag, i) => (
-                    <FlagCard key={i} flag={flag} />
+                    <FlagCard key={i} flag={flag} flagFeedback={flagFeedbackState[flag.requirement]} onFlagFeedback={handleFlagFeedback} />
                   ))}
                 </div>
                 <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
@@ -1239,7 +1521,7 @@ export default function Home() {
             )}
 
             {(shared?.recommendations?.length ?? 0) > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
+              <div ref={recommendationsRef} className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-4">
                   <h2 className="text-lg font-bold text-gray-900">Recommendations</h2>
                   {!loading && <SectionFeedback section="recommendations" feedback={feedback.recommendations} onFeedback={handleFeedback} />}
@@ -1260,6 +1542,12 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {showToast && (
+        <div className="fixed bottom-6 right-6 bg-gray-900 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-lg animate-fade-in z-50">
+          Feedback saved
+        </div>
+      )}
     </main>
   );
 }
