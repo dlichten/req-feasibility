@@ -98,6 +98,12 @@ const SHIFT_TYPES = [
 
 type ShiftType = (typeof SHIFT_TYPES)[number];
 
+const CURRENCY_BY_COUNTRY: Record<string, { code: string; symbol: string }> = {
+  Philippines: { code: "PHP", symbol: "₱" },
+  Colombia: { code: "COP", symbol: "$" },
+  India: { code: "INR", symbol: "₹" },
+};
+
 function getLocationById(id: string): LocationOption | undefined {
   for (const sites of Object.values(LOCATIONS)) {
     const found = sites.find(s => s.id === id);
@@ -136,6 +142,13 @@ interface TrainableSkill {
   estimatedRampTime: string;
 }
 
+interface CompensationAssessment {
+  rating: "highly_competitive" | "competitive" | "below_market" | "significantly_below_market";
+  explanation: string;
+  marketRange: string;
+  siteVariance?: string;
+}
+
 interface LocationResult {
   location: string;
   workSetup: string;
@@ -145,6 +158,7 @@ interface LocationResult {
   baselineTimeToFill: string;
   narrative: string;
   locationSpecificFlags: RiskFlag[];
+  compensationAssessment?: CompensationAssessment;
 }
 
 interface SharedAnalysis {
@@ -167,6 +181,16 @@ interface AnalysisResponse {
 // === Constants ===
 
 const CHANGELOG = [
+  {
+    version: "v2.10",
+    date: "Feb 25, 2026",
+    changes: [
+      "Added optional compensation input with auto-detected currency by country",
+      "Analysis now assesses whether offered salary is competitive for the role type and market",
+      "Comp assessment notes site-level variance (e.g., competitive in Davao but below market in Ortigas)",
+      "Added \"Compensation Constraint\" as a new flag category",
+    ],
+  },
   {
     version: "v2.9.1",
     date: "Feb 25, 2026",
@@ -335,6 +359,13 @@ function getScoreBand(score: number) {
   if (score >= 16) return { label: "Very Low Feasibility", color: "text-red-500", bg: "bg-red-500", track: "text-red-100" };
   return { label: "Near-Impossible", color: "text-red-700", bg: "bg-red-600", track: "text-red-100" };
 }
+
+const compRatingStyles: Record<string, { label: string; color: string; bg: string }> = {
+  highly_competitive: { label: "Highly Competitive", color: "text-green-700", bg: "bg-green-50 border-green-200" },
+  competitive: { label: "Competitive", color: "text-green-600", bg: "bg-green-50 border-green-200" },
+  below_market: { label: "Below Market", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
+  significantly_below_market: { label: "Significantly Below Market", color: "text-red-700", bg: "bg-red-50 border-red-200" },
+};
 
 // === Components ===
 
@@ -620,6 +651,7 @@ export default function Home() {
   const [selectedLocations, setSelectedLocations] = useState<string[]>(["ph-all"]);
   const [workSetup, setWorkSetup] = useState<WorkSetup>("Work From Home");
   const [shiftType, setShiftType] = useState<ShiftType>("Morning (Weekends Off)");
+  const [compensation, setCompensation] = useState<Record<string, string>>({});
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -739,6 +771,8 @@ export default function Home() {
 
   const showIndiaWarning = selectedLocations.includes("in-remote") && workSetup !== "Work From Home";
 
+  const selectedCountries = Array.from(new Set(selectedLocations.map(id => getCountryForId(id)).filter((c): c is string => !!c)));
+
   async function analyze() {
     if (!reqText.trim() || selectedLocations.length === 0) return;
     setLoading(true);
@@ -763,11 +797,26 @@ export default function Home() {
       .map(id => getLocationById(id)?.label)
       .filter(Boolean) as string[];
 
+    const compEntries: Record<string, number> = {};
+    for (const [country, val] of Object.entries(compensation)) {
+      const num = parseInt(val, 10);
+      if (num > 0) {
+        const cur = CURRENCY_BY_COUNTRY[country];
+        if (cur) compEntries[cur.code] = num;
+      }
+    }
+
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requisition: reqText, locations: locationLabels, workSetup, shiftType }),
+        body: JSON.stringify({
+          requisition: reqText,
+          locations: locationLabels,
+          workSetup,
+          shiftType,
+          compensation: Object.keys(compEntries).length > 0 ? compEntries : undefined,
+        }),
       });
 
       if (!res.ok) {
@@ -927,7 +976,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.9.1
+              v2.10
             </button>
           </div>
         </div>
@@ -1018,6 +1067,25 @@ export default function Home() {
                   <p className="text-sm text-gray-800 mt-1 font-medium">{detailLocation.baselineTimeToFill}</p>
                 </div>
               )}
+              {detailLocation.compensationAssessment && (() => {
+                const ca = detailLocation.compensationAssessment;
+                const style = compRatingStyles[ca.rating] || compRatingStyles.competitive;
+                return (
+                  <div className={`rounded-lg border p-3 ${style.bg}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Compensation</span>
+                      <span className={`text-xs font-bold ${style.color}`}>{style.label}</span>
+                    </div>
+                    <p className="text-sm text-gray-700">{ca.explanation}</p>
+                    {ca.marketRange && (
+                      <p className="text-xs text-gray-500 mt-1">Market range: {ca.marketRange}</p>
+                    )}
+                    {ca.siteVariance && (
+                      <p className="text-xs text-gray-500 mt-1">{ca.siteVariance}</p>
+                    )}
+                  </div>
+                );
+              })()}
               {detailLocation.narrative && (
                 <div>
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Market Context</span>
@@ -1118,6 +1186,41 @@ export default function Home() {
                 ))}
               </div>
             </div>
+
+            {/* Monthly Compensation */}
+            {selectedCountries.length > 0 && (
+              <div className="mb-4">
+                <span className="text-sm font-semibold text-gray-700 block mb-1">Monthly Compensation</span>
+                <p className="text-xs text-gray-400 mb-2">Gross monthly salary offered for this role</p>
+                <div className="flex flex-wrap gap-3">
+                  {selectedCountries.map(country => {
+                    const cur = CURRENCY_BY_COUNTRY[country];
+                    if (!cur) return null;
+                    return (
+                      <div key={country} className="flex items-center gap-2">
+                        {selectedCountries.length > 1 && (
+                          <span className="text-xs font-medium text-gray-400 w-20 flex-shrink-0">{country}</span>
+                        )}
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">{cur.code}</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={compensation[country] || ""}
+                            onChange={(e) => {
+                              setCompensation(prev => ({ ...prev, [country]: e.target.value }));
+                              if (result) setResult(null);
+                            }}
+                            placeholder="Optional"
+                            className="w-44 pl-12 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* India + non-WFH warning */}
             {showIndiaWarning && (
@@ -1251,6 +1354,25 @@ export default function Home() {
                         <p className="text-sm text-gray-700 mt-1 leading-relaxed">{singleLoc.narrative}</p>
                       </div>
                     )}
+                    {singleLoc.compensationAssessment && (() => {
+                      const ca = singleLoc.compensationAssessment;
+                      const style = compRatingStyles[ca.rating] || compRatingStyles.competitive;
+                      return (
+                        <div className={`rounded-lg border p-3 ${style.bg}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Compensation</span>
+                            <span className={`text-xs font-bold ${style.color}`}>{style.label}</span>
+                          </div>
+                          <p className="text-sm text-gray-700">{ca.explanation}</p>
+                          {ca.marketRange && (
+                            <p className="text-xs text-gray-500 mt-1">Market range: {ca.marketRange}</p>
+                          )}
+                          {ca.siteVariance && (
+                            <p className="text-xs text-gray-500 mt-1">{ca.siteVariance}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1299,6 +1421,11 @@ export default function Home() {
                             <span className="font-semibold">Baseline:</span> {loc.baselineTimeToFill}
                           </p>
                         )}
+                        {loc.compensationAssessment && (
+                          <p className={`text-xs font-medium mt-1 ${(compRatingStyles[loc.compensationAssessment.rating] || compRatingStyles.competitive).color}`}>
+                            Comp: {(compRatingStyles[loc.compensationAssessment.rating] || compRatingStyles.competitive).label}
+                          </p>
+                        )}
                         {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
                           <button
                             onClick={() => setDetailLocation(loc)}
@@ -1339,39 +1466,50 @@ export default function Home() {
                   This is a directional assessment to support your review — not a final determination.
                 </p>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-2 pr-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Location</th>
-                        <th className="text-center py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Score</th>
-                        <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Verdict</th>
-                        <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">TTF</th>
-                        <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Baseline</th>
-                        <th className="py-2 pl-4"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result!.locationResults.map((loc, i) => (
-                        <tr key={i} className="border-b border-gray-100 last:border-0">
-                          <td className="py-3 pr-4 font-medium text-gray-900">{loc.location}</td>
-                          <td className="py-3 px-4 text-center"><ScoreBadge score={loc.feasibilityScore} /></td>
-                          <td className="py-3 px-4 text-gray-700">{loc.verdict}</td>
-                          <td className="py-3 px-4 text-gray-600">{loc.estimatedTimeToFill}</td>
-                          <td className="py-3 px-4 text-gray-400">{loc.baselineTimeToFill}</td>
-                          <td className="py-3 pl-4">
-                            {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
-                              <button
-                                onClick={() => setDetailLocation(loc)}
-                                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap"
-                              >
-                                Details
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {(() => {
+                    const hasComp = result!.locationResults.some(l => l.compensationAssessment);
+                    return (
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-2 pr-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Location</th>
+                            <th className="text-center py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Score</th>
+                            <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Verdict</th>
+                            <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">TTF</th>
+                            <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Baseline</th>
+                            {hasComp && <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Comp</th>}
+                            <th className="py-2 pl-4"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result!.locationResults.map((loc, i) => (
+                            <tr key={i} className="border-b border-gray-100 last:border-0">
+                              <td className="py-3 pr-4 font-medium text-gray-900">{loc.location}</td>
+                              <td className="py-3 px-4 text-center"><ScoreBadge score={loc.feasibilityScore} /></td>
+                              <td className="py-3 px-4 text-gray-700">{loc.verdict}</td>
+                              <td className="py-3 px-4 text-gray-600">{loc.estimatedTimeToFill}</td>
+                              <td className="py-3 px-4 text-gray-400">{loc.baselineTimeToFill}</td>
+                              {hasComp && (
+                                <td className={`py-3 px-4 text-xs font-medium ${loc.compensationAssessment ? (compRatingStyles[loc.compensationAssessment.rating] || compRatingStyles.competitive).color : "text-gray-300"}`}>
+                                  {loc.compensationAssessment ? (compRatingStyles[loc.compensationAssessment.rating] || compRatingStyles.competitive).label : "—"}
+                                </td>
+                              )}
+                              <td className="py-3 pl-4">
+                                {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
+                                  <button
+                                    onClick={() => setDetailLocation(loc)}
+                                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap"
+                                  >
+                                    Details
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
                 </div>
               </div>
             )}

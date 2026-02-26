@@ -109,6 +109,42 @@ The user will specify the shift type for the role. This affects candidate willin
 
 When shift type makes the req harder to fill, flag it as a "Shift Type Constraint." Nightshift alone is worth a flag on specialized roles. Nightshift + fully on-site + niche requirements is a major compounding constraint.
 
+### Compensation Assessment
+
+When the user provides a monthly compensation figure, assess it relative to the role type, experience level, and country market. If no compensation is provided, skip this section entirely — do not guess or estimate compensation.
+
+**Philippines (PHP):**
+- Entry-level BPO/admin: 18,000-25,000/month
+- Mid-level specialized (healthcare billing, accounting): 30,000-50,000
+- Senior specialized: 50,000-80,000
+- Highly specialized/niche: 70,000-120,000+
+- Note: Metro Manila (Ortigas) expectations run 10-20% higher than provincial sites (Davao, Cebu, Angeles)
+
+**Colombia (COP):**
+- Entry-level: 2,000,000-3,000,000/month
+- Mid-level specialized: 3,500,000-5,500,000
+- Senior specialized: 5,500,000-8,000,000
+- Highly specialized/niche: 7,000,000-12,000,000+
+- Note: Bogotá expectations are generally higher than other cities
+
+**India (INR):**
+- Entry-level: 20,000-35,000/month
+- Mid-level specialized: 40,000-70,000
+- Senior specialized: 70,000-120,000
+- Highly specialized/niche: 100,000-180,000+
+
+These ranges are approximate baselines. Adjust your assessment based on the specific role requirements — a mid-level biller with niche DME + Brightree experience commands the higher end of mid-level or even senior-level comp.
+
+Assess compensation as one of:
+- "highly_competitive" — above market, will attract strong candidates and accelerate fill time
+- "competitive" — at market, no negative impact on feasibility
+- "below_market" — will reduce the pool and extend fill time. Estimate the impact.
+- "significantly_below_market" — will be a primary blocker. Many qualified candidates will decline or not apply.
+
+When comp is below market, flag it as "Compensation Constraint." If the comp is below market AND the role has niche requirements, call out the compounding effect — you're asking for a unicorn and underpaying for it.
+
+In multi-location results, note where site-level comp expectations differ. For example: "This salary is competitive for Davao but below market for Ortigas, where candidates have more options and higher cost of living."
+
 ## Multi-Location Analysis Structure
 
 When analyzing a requisition for multiple locations, separate your analysis into shared and location-specific content.
@@ -134,6 +170,8 @@ Scores should differ between locations when the talent pool dynamics differ. For
 Order location results as provided in the user's request.
 
 For a single location, use the same structure — put all flags in shared analysis and use the location result for score, verdict, and narrative.
+
+Only include compensationAssessment in location results when the user provides a compensation figure. If no compensation is provided, omit the field entirely.
 
 ## Scoring Guide (Feasibility Score)
 
@@ -178,7 +216,13 @@ Return a JSON object with this exact structure. Always use this format, even for
           "explanation": "<location-specific explanation>",
           "suggestion": "<specific actionable fix>"
         }
-      ]
+      ],
+      "compensationAssessment": {
+        "rating": "highly_competitive" | "competitive" | "below_market" | "significantly_below_market",
+        "explanation": "<1-2 sentences on how this comp compares to market for this role type>",
+        "marketRange": "<e.g. '30,000-50,000 PHP for this role type'>",
+        "siteVariance": "<optional: note if comp is competitive in some sites but not others>"
+      }
     }
   ],
   "sharedAnalysis": {
@@ -186,7 +230,7 @@ Return a JSON object with this exact structure. Always use this format, even for
       {
         "requirement": "<the specific requirement being flagged, quoted from the req>",
         "riskLevel": "high" | "medium" | "low",
-        "category": "<one of: Niche Software, Niche Skill, Stacked Specificity, Title/JD Mismatch, Experience Threshold, Geographic/Market, Shift Type Constraint, Vague/Subjective Criteria, Other>",
+        "category": "<one of: Niche Software, Niche Skill, Stacked Specificity, Title/JD Mismatch, Experience Threshold, Geographic/Market, Shift Type Constraint, Compensation Constraint, Vague/Subjective Criteria, Other>",
         "source": "screening_criteria" | "qualifications",
         "explanation": "<why this is a risk — include estimated talent pool impact where possible>",
         "suggestion": "<specific actionable fix, not vague advice>"
@@ -233,6 +277,7 @@ Return a JSON object with this exact structure. Always use this format, even for
 - **GEOGRAPHIC/MARKET**: Requirements that are particularly difficult in the specified location and work setup.
 - **WORK SETUP CONSTRAINT**: The specified work setup (Hybrid or On-Site) limits the talent pool more than the role requires. Flag when the job could be done remotely but is restricted to on-site/hybrid, or when a country-wide location is paired with a non-WFH setup.
 - **SHIFT TYPE CONSTRAINT**: The specified shift type (nightshift, rotational, or unfavorable days-off pattern) reduces the candidate pool. Flag when the shift compounds with other constraints. Nightshift on a specialized role is always worth flagging.
+- **COMPENSATION CONSTRAINT**: The offered compensation is below market for this role type and location. Flag when comp will reduce the pool or extend fill time. Call out compounding effects when below-market comp is paired with niche requirements.
 - **VAGUE/SUBJECTIVE CRITERIA**: Requirements like "stable employment history" that lack clear definition and may be applied inconsistently or screen out good candidates.
 
 For shared flags sourced from screening criteria or qualifications, set the "source" field accordingly. Alignment observations (JD vs. criteria mismatches) go in \`sharedAnalysis.alignmentNotes\` — not in the flags array. These are informational and do not drive the score.
@@ -268,14 +313,14 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { requisition?: string; locations?: string[]; workSetup?: string; shiftType?: string };
+  let body: { requisition?: string; locations?: string[]; workSetup?: string; shiftType?: string; compensation?: Record<string, number> };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { requisition, locations = ["All Philippines (remote)"], workSetup = "Work From Home", shiftType = "Morning (Weekends Off)" } = body;
+  const { requisition, locations = ["All Philippines (remote)"], workSetup = "Work From Home", shiftType = "Morning (Weekends Off)", compensation } = body;
   if (!requisition || typeof requisition !== "string" || !requisition.trim()) {
     return NextResponse.json(
       { error: "Please provide a requisition to analyze" },
@@ -303,7 +348,7 @@ export async function POST(request: Request) {
     const result = streamText({
       model: anthropic("claude-sonnet-4-6"),
       system: SYSTEM_PROMPT,
-      prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}] [Shift Type: ${shiftType}]\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
+      prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}] [Shift Type: ${shiftType}]${compensation && Object.keys(compensation).length > 0 ? ` [Compensation: ${Object.entries(compensation).map(([cur, amt]) => `${amt.toLocaleString()} ${cur}/month`).join(", ")}]` : ""}\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
     });
 
     return result.toTextStreamResponse({
