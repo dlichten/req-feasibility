@@ -129,6 +129,26 @@ Score represents how fillable this requisition is in the target location with th
 Return a JSON object with this exact structure. Always use this format, even for a single location:
 
 {
+  "locationResults": [
+    {
+      "location": "<location label as provided>",
+      "workSetup": "<work setup as provided>",
+      "feasibilityScore": <number 0-100>,
+      "verdict": "<one sentence verdict for this location>",
+      "estimatedTimeToFill": "<specific range, e.g. '70-90+ days'>",
+      "narrative": "<2-3 sentences explaining WHY this location scores the way it does — what about this specific market makes the req easier or harder>",
+      "locationSpecificFlags": [
+        {
+          "requirement": "<requirement or constraint specific to this location>",
+          "riskLevel": "high" | "medium" | "low",
+          "category": "<e.g. Work Setup Constraint, Geographic/Market>",
+          "source": "screening_criteria" | "qualifications",
+          "explanation": "<location-specific explanation>",
+          "suggestion": "<specific actionable fix>"
+        }
+      ]
+    }
+  ],
   "sharedAnalysis": {
     "flags": [
       {
@@ -168,27 +188,7 @@ Return a JSON object with this exact structure. Always use this format, even for
     "recommendations": [
       "<numbered, prioritized, actionable recommendation>"
     ]
-  },
-  "locationResults": [
-    {
-      "location": "<location label as provided>",
-      "workSetup": "<work setup as provided>",
-      "feasibilityScore": <number 0-100>,
-      "verdict": "<one sentence verdict for this location>",
-      "estimatedTimeToFill": "<specific range, e.g. '70-90+ days'>",
-      "narrative": "<2-3 sentences explaining WHY this location scores the way it does — what about this specific market makes the req easier or harder>",
-      "locationSpecificFlags": [
-        {
-          "requirement": "<requirement or constraint specific to this location>",
-          "riskLevel": "high" | "medium" | "low",
-          "category": "<e.g. Work Setup Constraint, Geographic/Market>",
-          "source": "screening_criteria" | "qualifications",
-          "explanation": "<location-specific explanation>",
-          "suggestion": "<specific actionable fix>"
-        }
-      ]
-    }
-  ]
+  }
 }
 
 ## Flagging Guidelines

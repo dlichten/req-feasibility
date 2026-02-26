@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { flushSync } from "react-dom";
+import { parse as parsePartialJSON } from "partial-json";
 
 const SAMPLE_REQ = `Senior Medical Billing Specialist
 Open
@@ -142,13 +144,22 @@ interface SharedAnalysis {
 }
 
 interface AnalysisResponse {
-  sharedAnalysis: SharedAnalysis;
   locationResults: LocationResult[];
+  sharedAnalysis: SharedAnalysis;
 }
 
 // === Constants ===
 
 const CHANGELOG = [
+  {
+    version: "v2.7.2",
+    date: "Feb 25, 2026",
+    changes: [
+      "Restored progressive streaming: results now paint section-by-section as the analysis arrives",
+      "Fixed layout stability: sections fade in top-to-bottom without pushing visible content around",
+      "Reordered response schema so scores/comparison render before flags and recommendations",
+    ],
+  },
   {
     version: "v2.7.1",
     date: "Feb 25, 2026",
@@ -526,10 +537,25 @@ export default function Home() {
         if (done) break;
         text += decoder.decode(value, { stream: true });
         setStreamProgress(text.length);
+
+        const jsonStart = text.indexOf("{");
+        if (jsonStart < 0) continue;
+
+        try {
+          const partial = parsePartialJSON(text.slice(jsonStart));
+          if (partial && typeof partial === "object" && partial.locationResults?.[0]?.feasibilityScore !== undefined) {
+            flushSync(() => {
+              setResult(partial as AnalysisResponse);
+            });
+          }
+        } catch {
+          // partial-json can't parse yet
+        }
       }
 
       try {
-        const final = JSON.parse(text);
+        const jsonStart = text.indexOf("{");
+        const final = JSON.parse(jsonStart >= 0 ? text.slice(jsonStart) : text);
         setResult(final);
       } catch {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -575,7 +601,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.7.1
+              v2.7.2
             </button>
           </div>
         </div>
@@ -756,7 +782,7 @@ export default function Home() {
 
         {/* Results */}
         {result && (result.locationResults?.length > 0 || (shared?.flags?.length ?? 0) > 0) && (
-          <div className="space-y-6 animate-fade-in">
+          <div className="space-y-6">
 
             {/* === Single Location: Score + Header === */}
             {resultCount === 1 && (() => {
@@ -770,7 +796,7 @@ export default function Home() {
               return (
                 <>
                   {loc.feasibilityScore !== undefined && (
-                    <div className="bg-white rounded-xl border shadow-sm p-6">
+                    <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                       <div className="flex items-center mb-2">
                         <h2 className="text-lg font-bold text-gray-900">Feasibility Analysis</h2>
                         {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
@@ -806,7 +832,7 @@ export default function Home() {
 
                   {/* Flagged Requirements (combined shared + location-specific) */}
                   {allRiskFlags.length > 0 && (
-                    <div className="bg-white rounded-xl border shadow-sm p-6">
+                    <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                       <div className="flex items-center mb-1">
                         <h2 className="text-lg font-bold text-gray-900">
                           Flagged Requirements
@@ -832,7 +858,7 @@ export default function Home() {
 
                   {/* Alignment Notes */}
                   {alignmentNotes.length > 0 && (
-                    <div className="bg-white rounded-xl border shadow-sm p-6">
+                    <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                       <div className="flex items-center mb-1">
                         <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
                         {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
@@ -853,7 +879,7 @@ export default function Home() {
 
             {/* === Multi-location: 2-3 Side-by-Side Cards === */}
             {resultCount >= 2 && resultCount <= 3 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
                   <h2 className="text-lg font-bold text-gray-900">Feasibility Comparison</h2>
                   {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
@@ -887,7 +913,7 @@ export default function Home() {
 
             {/* === Multi-location: 4+ Summary Table === */}
             {resultCount >= 4 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
                   <h2 className="text-lg font-bold text-gray-900">Feasibility Comparison</h2>
                   {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
@@ -922,7 +948,7 @@ export default function Home() {
 
             {/* === Multi-location: Shared Flagged Requirements === */}
             {resultCount >= 2 && (shared?.flags?.length ?? 0) > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
                   <h2 className="text-lg font-bold text-gray-900">
                     Flagged Requirements
@@ -948,7 +974,7 @@ export default function Home() {
 
             {/* === Multi-location: Shared Alignment Notes === */}
             {resultCount >= 2 && (shared?.alignmentNotes?.length ?? 0) > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
                   <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
                   {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
@@ -965,8 +991,8 @@ export default function Home() {
             )}
 
             {/* === Multi-location: Location-Specific Notes === */}
-            {resultCount >= 2 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+            {resultCount >= 2 && shared !== undefined && (
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Location-Specific Notes</h2>
                 <p className="text-sm text-gray-500 mb-5">
                   How each location&apos;s market affects feasibility for this requisition.
@@ -1002,7 +1028,7 @@ export default function Home() {
 
             {/* Well-Calibrated Requirements */}
             {(shared?.wellCalibratedRequirements?.length ?? 0) > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center gap-2 mb-4">
                   <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
@@ -1025,7 +1051,7 @@ export default function Home() {
 
             {/* Revised Screening Criteria */}
             {shared?.revisedScreeningCriteria && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
                   <h2 className="text-lg font-bold text-gray-900">Recommended Screening Criteria</h2>
                   {!loading && <SectionFeedback section="screening" feedback={feedback.screening} onFeedback={handleFeedback} />}
@@ -1080,7 +1106,7 @@ export default function Home() {
 
             {/* Recommendations */}
             {(shared?.recommendations?.length ?? 0) > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-4">
                   <h2 className="text-lg font-bold text-gray-900">Recommendations</h2>
                   {!loading && <SectionFeedback section="recommendations" feedback={feedback.recommendations} onFeedback={handleFeedback} />}
