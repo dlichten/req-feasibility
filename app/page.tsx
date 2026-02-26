@@ -182,6 +182,16 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.11",
+    date: "Feb 26, 2026",
+    changes: [
+      "Updated color palette to Connext brand colors (navy, warm orange, gold)",
+      "Added Connext logo to header",
+      "Updated browser favicon to Connext icon",
+      "Replaced generic purple/indigo with brand identity colors throughout",
+    ],
+  },
+  {
     version: "v2.10",
     date: "Feb 25, 2026",
     changes: [
@@ -627,11 +637,11 @@ function OverallFeedback({
             value={feedbackNotes}
             onChange={(e) => onNotesChange(e.target.value)}
             placeholder="Optional: what was off?"
-            className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none"
+            className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:border-[#071776] focus:ring-1 focus:ring-[#071776]/20 focus:outline-none"
           />
           <button
             onClick={onSubmit}
-            className="text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-sm font-medium text-white bg-[#071776] hover:bg-[#050f55] px-3 py-1.5 rounded-lg transition-colors"
           >
             Submit
           </button>
@@ -974,11 +984,7 @@ export default function Home() {
       <div className="border-b bg-white">
         <div className="max-w-5xl mx-auto px-6 py-5">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
-              </svg>
-            </div>
+            <img src="/logo.png" alt="Connext" className="w-9 h-9" />
             <div className="flex-1">
               <h1 className="text-xl font-bold text-gray-900">Req Feasibility Analyzer</h1>
               <p className="text-sm text-gray-500">Pre-submission requisition review</p>
@@ -987,7 +993,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.10
+              v2.11
             </button>
           </div>
         </div>
@@ -1138,8 +1144,8 @@ export default function Home() {
                             onClick={() => toggleLocation(site.id)}
                             className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
                               isSelected
-                                ? "bg-indigo-600 text-white border-indigo-600"
-                                : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                                ? "bg-[#071776] text-white border-[#071776]"
+                                : "bg-white text-gray-600 border-gray-200 hover:border-[#071776]/30 hover:text-[#071776]"
                             }`}
                           >
                             {site.label}
@@ -1163,8 +1169,8 @@ export default function Home() {
                       onClick={() => { setWorkSetup(ws); if (result) setResult(null); }}
                       className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
                         workSetup === ws
-                          ? "bg-indigo-600 text-white border-indigo-600"
-                          : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                          ? "bg-[#071776] text-white border-[#071776]"
+                          : "bg-white text-gray-600 border-gray-200 hover:border-[#071776]/30 hover:text-[#071776]"
                       }`}
                     >
                       {ws}
@@ -1177,7 +1183,7 @@ export default function Home() {
                 <select
                   value={shiftType}
                   onChange={(e) => { setShiftType(e.target.value as ShiftType); if (result) setResult(null); }}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none cursor-pointer"
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-600 focus:border-[#071776] focus:ring-1 focus:ring-[#071776]/20 focus:outline-none cursor-pointer"
                 >
                   {SHIFT_TYPES.map(st => (
                     <option key={st} value={st}>{st}</option>
@@ -1211,7 +1217,7 @@ export default function Home() {
                             if (result) setResult(null);
                           }}
                           placeholder="Min"
-                          className="w-28 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none"
+                          className="w-28 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-[#071776] focus:ring-1 focus:ring-[#071776]/20 focus:outline-none"
                         />
                         <span className="text-sm text-gray-300">—</span>
                         <input
@@ -1223,7 +1229,7 @@ export default function Home() {
                             if (result) setResult(null);
                           }}
                           placeholder="Max"
-                          className="w-28 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none"
+                          className="w-28 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-[#071776] focus:ring-1 focus:ring-[#071776]/20 focus:outline-none"
                         />
                       </div>
                     );
@@ -1248,7 +1254,7 @@ export default function Home() {
               </label>
               <button
                 onClick={loadSample}
-                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                className="text-sm text-[#071776] hover:text-[#050f55] font-medium"
               >
                 Try sample req
               </button>
@@ -1256,7 +1262,7 @@ export default function Home() {
             <textarea
               id="req"
               rows={12}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none resize-y"
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-[#071776] focus:ring-2 focus:ring-[#071776]/20 focus:outline-none resize-y"
               placeholder="Paste the full job requisition here — title, description, qualifications, screening criteria, etc."
               value={reqText}
               onChange={(e) => setReqText(e.target.value)}
@@ -1265,7 +1271,7 @@ export default function Home() {
               <button
                 onClick={analyze}
                 disabled={loading || !reqText.trim() || selectedLocations.length === 0}
-                className="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                className="px-5 py-2.5 bg-[#071776] text-white text-sm font-semibold rounded-lg hover:bg-[#050f55] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
                 {loading ? (
                   <>
@@ -1439,7 +1445,7 @@ export default function Home() {
                         {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
                           <button
                             onClick={() => setDetailLocation(loc)}
-                            className="mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                            className="mt-3 text-xs text-[#071776] hover:text-[#050f55] font-medium flex items-center gap-1"
                           >
                             View details
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -1508,7 +1514,7 @@ export default function Home() {
                                 {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
                                   <button
                                     onClick={() => setDetailLocation(loc)}
-                                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap"
+                                    className="text-xs text-[#071776] hover:text-[#050f55] font-medium whitespace-nowrap"
                                   >
                                     Details
                                   </button>
@@ -1729,7 +1735,7 @@ export default function Home() {
                 <ul className="space-y-3">
                   {shared!.recommendations.map((rec, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                      <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-[#071776]/10 text-[#071776] flex items-center justify-center text-xs font-bold">
                         {i + 1}
                       </span>
                       <p className="text-sm text-gray-700 leading-relaxed">{rec}</p>

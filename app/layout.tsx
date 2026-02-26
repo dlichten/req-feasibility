@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Req Feasibility Analyzer",
   description: "Analyze job requisitions for hiring feasibility risks",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
