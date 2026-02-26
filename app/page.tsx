@@ -542,7 +542,11 @@ function FlagCard({ flag, flagFeedback, onFlagFeedback }: {
   );
 }
 
-function AlignmentCard({ note }: { note: AlignmentNote }) {
+function AlignmentCard({ note, noteFeedback, onNoteFeedback }: {
+  note: AlignmentNote;
+  noteFeedback?: "agree" | "disagree" | null;
+  onNoteFeedback?: (requirement: string, value: "agree" | "disagree" | null) => void;
+}) {
   if (!note.requirement) return null;
   return (
     <div className="rounded-lg border border-sky-200 bg-sky-50/50 p-4">
@@ -553,7 +557,39 @@ function AlignmentCard({ note }: { note: AlignmentNote }) {
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          {note.category && <span className="text-xs text-sky-600 font-medium">{note.category}</span>}
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            {note.category && <span className="text-xs text-sky-600 font-medium">{note.category}</span>}
+            {onNoteFeedback && (
+              <div className="flex items-center gap-0.5 ml-auto">
+                <button
+                  onClick={() => onNoteFeedback(note.requirement, noteFeedback === "agree" ? null : "agree")}
+                  className={`p-0.5 rounded transition-colors ${
+                    noteFeedback === "agree"
+                      ? "text-green-600 bg-green-50"
+                      : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+                  }`}
+                  title="Agree with this note"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.25c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75 2.25 2.25 0 012.25 2.25c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282m0 0h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904m10.598-9.75H14.25M5.904 18.5c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 9.953 4.167 9.5 5 9.5h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => onNoteFeedback(note.requirement, noteFeedback === "disagree" ? null : "disagree")}
+                  className={`p-0.5 rounded transition-colors ${
+                    noteFeedback === "disagree"
+                      ? "text-red-500 bg-red-50"
+                      : "text-gray-300 hover:text-gray-500 hover:bg-gray-50"
+                  }`}
+                  title="Disagree with this note"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.498 15.25H4.372c-1.026 0-1.945-.694-2.054-1.715a12.137 12.137 0 01-.068-1.285c0-2.848.992-5.464 2.649-7.521C5.287 4.247 5.886 4 6.504 4h4.016a4.5 4.5 0 011.423.23l3.114 1.04a4.5 4.5 0 001.423.23h1.294M7.498 15.25c.618 0 .991.724.725 1.282A7.471 7.471 0 007.5 19.75 2.25 2.25 0 009.75 22a.75.75 0 00.75-.75v-.633c0-.573.11-1.14.322-1.672.304-.76.93-1.33 1.653-1.715a9.04 9.04 0 002.86-2.4c.498-.634 1.226-1.08 2.032-1.08h.384m-10.253 1.5H9.7m8.075-9.75c.01.05.027.1.05.148.593 1.2.925 2.55.925 3.977 0 1.31-.269 2.56-.754 3.695" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
           <p className="text-sm font-semibold text-gray-900 mb-1">{note.requirement}</p>
           {note.explanation && <p className="text-sm text-gray-600 mb-2">{note.explanation}</p>}
           {note.suggestion && (
@@ -1408,18 +1444,6 @@ export default function Home() {
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
                   <h2 className="text-lg font-bold text-gray-900">Feasibility Comparison</h2>
-                  {!loading && (
-                    <OverallFeedback
-                      overallFeedback={overallFeedback}
-                      onThumb={handleOverallFeedback}
-                      feedbackNotes={feedbackNotes}
-                      onNotesChange={setFeedbackNotes}
-                      onSubmit={() => submitFeedback()}
-                      feedbackSent={feedbackSent}
-                      feedbackNudge={feedbackNudge}
-                      showInput={showFeedbackInput}
-                    />
-                  )}
                 </div>
                 <p className="text-xs text-gray-400 mb-6">
                   This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
@@ -1474,18 +1498,6 @@ export default function Home() {
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-2">
                   <h2 className="text-lg font-bold text-gray-900">Feasibility Comparison</h2>
-                  {!loading && (
-                    <OverallFeedback
-                      overallFeedback={overallFeedback}
-                      onThumb={handleOverallFeedback}
-                      feedbackNotes={feedbackNotes}
-                      onNotesChange={setFeedbackNotes}
-                      onSubmit={() => submitFeedback()}
-                      feedbackSent={feedbackSent}
-                      feedbackNudge={feedbackNudge}
-                      showInput={showFeedbackInput}
-                    />
-                  )}
                 </div>
                 <p className="text-xs text-gray-400 mb-6">
                   This is a directional assessment to support your review — not a final determination.
@@ -1554,7 +1566,6 @@ export default function Home() {
                       ({singleAllFlags.length}{loading ? "+" : ""} found)
                     </span>
                   </h2>
-                  {!loading && <SectionFeedback section="flags" feedback={feedback.flags} onFeedback={handleFeedback} />}
                 </div>
                 <p className="text-sm text-gray-500 mb-5">
                   Requirements that may narrow your candidate pool and extend time-to-fill.
@@ -1584,7 +1595,6 @@ export default function Home() {
                       ({sortedSharedFlags.length} found)
                     </span>
                   </h2>
-                  {!loading && <SectionFeedback section="flags" feedback={feedback.flags} onFeedback={handleFeedback} />}
                 </div>
                 <p className="text-sm text-gray-500 mb-5">
                   Requirements that may narrow your candidate pool and extend time-to-fill. These apply across all locations.
@@ -1613,14 +1623,13 @@ export default function Home() {
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
                   <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
-                  {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
                 </div>
                 <p className="text-sm text-gray-500 mb-5">
                   Potential mismatches between job description and screening criteria.
                 </p>
                 <div className="space-y-4">
                   {singleAlignmentNotes.map((note, i) => (
-                    <AlignmentCard key={i} note={note} />
+                    <AlignmentCard key={i} note={note} noteFeedback={flagFeedbackState[note.requirement]} onNoteFeedback={handleFlagFeedback} />
                   ))}
                 </div>
               </div>
@@ -1631,14 +1640,13 @@ export default function Home() {
               <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
                 <div className="flex items-center mb-1">
                   <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
-                  {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
                 </div>
                 <p className="text-sm text-gray-500 mb-5">
                   Potential mismatches between job description and screening criteria.
                 </p>
                 <div className="space-y-4">
                   {shared!.alignmentNotes.map((note, i) => (
-                    <AlignmentCard key={i} note={note} />
+                    <AlignmentCard key={i} note={note} noteFeedback={flagFeedbackState[note.requirement]} onNoteFeedback={handleFlagFeedback} />
                   ))}
                 </div>
               </div>
