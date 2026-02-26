@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { flushSync } from "react-dom";
 import { parse as parsePartialJSON } from "partial-json";
 
@@ -54,8 +54,51 @@ Screening Criteria:
 \u2022 Experience using Brightree cloud-based software.
 \u2022 Must have a stable employment history.`;
 
-const MARKETS = ["Philippines", "Colombia", "India"] as const;
-type Market = (typeof MARKETS)[number];
+// === Location & Work Setup Types ===
+
+interface LocationOption {
+  id: string;
+  label: string;
+  isCountryWide: boolean;
+}
+
+const LOCATIONS: Record<string, LocationOption[]> = {
+  Philippines: [
+    { id: "ph-all", label: "All Philippines (remote)", isCountryWide: true },
+    { id: "ph-angeles", label: "Angeles", isCountryWide: false },
+    { id: "ph-ortigas", label: "Ortigas", isCountryWide: false },
+    { id: "ph-cebu", label: "Cebu", isCountryWide: false },
+    { id: "ph-davao", label: "Davao", isCountryWide: false },
+  ],
+  Colombia: [
+    { id: "co-all", label: "All Colombia", isCountryWide: true },
+    { id: "co-bogota", label: "Bogot\u00e1", isCountryWide: false },
+  ],
+  India: [
+    { id: "in-remote", label: "India (remote)", isCountryWide: true },
+  ],
+};
+
+type WorkSetup = "Work From Home" | "Hybrid" | "Fully On-Site";
+
+const WORK_SETUPS: WorkSetup[] = ["Work From Home", "Hybrid", "Fully On-Site"];
+
+function getLocationById(id: string): LocationOption | undefined {
+  for (const sites of Object.values(LOCATIONS)) {
+    const found = sites.find(s => s.id === id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function getCountryForId(id: string): string | undefined {
+  for (const [country, sites] of Object.entries(LOCATIONS)) {
+    if (sites.some(s => s.id === id)) return country;
+  }
+  return undefined;
+}
+
+// === Analysis Types ===
 
 interface RiskFlag {
   requirement: string;
@@ -71,12 +114,17 @@ interface TrainableSkill {
   estimatedRampTime: string;
 }
 
-interface AnalysisResult {
+interface LocationResult {
+  location: string;
+  workSetup: string;
   feasibilityScore: number;
   overallVerdict: string;
   estimatedTimeToFill: string;
   summary: string;
   flags: RiskFlag[];
+}
+
+interface SharedAnalysis {
   wellCalibratedRequirements: string[];
   revisedScreeningCriteria: {
     mustHave: string[];
@@ -86,7 +134,24 @@ interface AnalysisResult {
   recommendations: string[];
 }
 
+interface AnalysisResponse {
+  results: LocationResult[];
+  sharedAnalysis: SharedAnalysis;
+}
+
+// === Constants ===
+
 const CHANGELOG = [
+  {
+    version: "v2.6",
+    date: "Feb 25, 2026",
+    changes: [
+      "Added site-level location selection (Angeles, Ortigas, Cebu, Davao, Bogot\u00e1) with multi-select for side-by-side comparison",
+      "Added Work Setup selector (Work From Home, Hybrid, Fully On-Site) \u2014 analysis now factors in how work setup affects the talent pool",
+      "Multi-location results show side-by-side score cards (2-3 locations) or summary table (4+)",
+      "Auto-detects work setup and site mentions when pasting a requisition",
+    ],
+  },
   {
     version: "v2.5",
     date: "Feb 25, 2026",
@@ -117,7 +182,7 @@ const CHANGELOG = [
     date: "Feb 25, 2026",
     changes: [
       "Analysis now scores only Qualifications and Screening Criteria for feasibility (job description tasks are no longer treated as hiring constraints)",
-      'Added "Alignment Notes" section flagging mismatches between JD and screening criteria',
+      '"Alignment Notes" section flagging mismatches between JD and screening criteria',
       "Added Hiring Market selector (Philippines, Colombia, India) \u2014 analysis now adjusts for regional talent pool dynamics",
       "Refined language on pool reduction estimates for defensibility",
       "Repositioned tool as pre-submission review checkpoint",
@@ -136,7 +201,7 @@ const CHANGELOG = [
     version: "v2.0",
     date: "Feb 25, 2026",
     changes: [
-      'Added "Well-Calibrated Requirements" section showing what\'s appropriately scoped',
+      '"Well-Calibrated Requirements" section showing what\'s appropriately scoped',
       "Added Revised Screening Criteria with Must Have / Nice to Have / Trainable tiers",
       "Trainable skills now include estimated ramp times",
       "Added Title/JD Mismatch and Vague/Subjective Criteria as flag categories",
@@ -169,23 +234,29 @@ function getScoreBand(score: number) {
   return { label: "Near-Impossible", color: "text-red-700", bg: "bg-red-600", track: "text-red-100" };
 }
 
-function ScoreGauge({ score }: { score: number }) {
+// === Components ===
+
+function ScoreGauge({ score, compact }: { score: number; compact?: boolean }) {
   const band = getScoreBand(score);
-  const circumference = 2 * Math.PI * 54;
+  const size = compact ? "w-28 h-28" : "w-36 h-36";
+  const radius = compact ? 40 : 54;
+  const viewBox = compact ? "0 0 90 90" : "0 0 120 120";
+  const center = compact ? 45 : 60;
+  const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="relative w-36 h-36">
-        <svg className="w-36 h-36 -rotate-90" viewBox="0 0 120 120">
-          <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" strokeWidth="8" className={band.track} />
+      <div className={`relative ${size}`}>
+        <svg className={`${size} -rotate-90`} viewBox={viewBox}>
+          <circle cx={center} cy={center} r={radius} fill="none" stroke="currentColor" strokeWidth={compact ? 6 : 8} className={band.track} />
           <circle
-            cx="60"
-            cy="60"
-            r="54"
+            cx={center}
+            cy={center}
+            r={radius}
             fill="none"
             stroke="currentColor"
-            strokeWidth="8"
+            strokeWidth={compact ? 6 : 8}
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
@@ -193,7 +264,7 @@ function ScoreGauge({ score }: { score: number }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-3xl font-bold ${band.color}`}>{score}</span>
+          <span className={`${compact ? "text-2xl" : "text-3xl"} font-bold ${band.color}`}>{score}</span>
           <span className="text-xs text-gray-500">/100</span>
         </div>
       </div>
@@ -305,29 +376,125 @@ function AlignmentCard({ flag }: { flag: RiskFlag }) {
   );
 }
 
+function ScoreBadge({ score }: { score: number }) {
+  const band = getScoreBand(score);
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-sm font-bold ${band.color}`}>
+      {score}
+    </span>
+  );
+}
+
+// === Main Component ===
+
 export default function Home() {
   const [reqText, setReqText] = useState("");
-  const [market, setMarket] = useState<Market>("Philippines");
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>(["ph-all"]);
+  const [workSetup, setWorkSetup] = useState<WorkSetup>("Work From Home");
+  const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Record<string, FeedbackValue>>({});
   const [streamProgress, setStreamProgress] = useState(0);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [expandedLocations, setExpandedLocations] = useState<Set<number>>(new Set());
+  const prevTextLenRef = useRef(0);
+
+  // Auto-detect work setup and locations from pasted text
+  useEffect(() => {
+    const jump = reqText.length - prevTextLenRef.current;
+    prevTextLenRef.current = reqText.length;
+    if (jump < 50) return;
+
+    const lower = reqText.toLowerCase();
+
+    if (lower.includes("work setup: work from home") || lower.includes("work setup: wfh")) {
+      setWorkSetup("Work From Home");
+    } else if (lower.includes("work setup: hybrid")) {
+      setWorkSetup("Hybrid");
+    } else if (lower.includes("work setup: on-site") || lower.includes("work setup: fully on-site") || lower.includes("work setup: onsite")) {
+      setWorkSetup("Fully On-Site");
+    }
+
+    const siteMap: Record<string, string> = {
+      davao: "ph-davao",
+      ortigas: "ph-ortigas",
+      angeles: "ph-angeles",
+      cebu: "ph-cebu",
+      "bogota": "co-bogota",
+      "bogot\u00e1": "co-bogota",
+    };
+
+    const detected: string[] = [];
+    for (const [keyword, id] of Object.entries(siteMap)) {
+      if (lower.includes(keyword)) {
+        detected.push(id);
+      }
+    }
+    if (detected.length > 0) {
+      setSelectedLocations(detected);
+    }
+  }, [reqText]);
+
+  function toggleLocation(id: string) {
+    const location = getLocationById(id);
+    if (!location) return;
+
+    setSelectedLocations(prev => {
+      const isSelected = prev.includes(id);
+
+      if (isSelected) {
+        if (prev.length === 1) return prev;
+        return prev.filter(x => x !== id);
+      }
+
+      const country = getCountryForId(id);
+      if (!country) return [...prev, id];
+
+      const countrySites = LOCATIONS[country];
+      const countryWide = countrySites.find(s => s.isCountryWide);
+
+      if (location.isCountryWide) {
+        const countryIds = countrySites.map(s => s.id);
+        return [...prev.filter(x => !countryIds.includes(x)), id];
+      } else {
+        const filtered = countryWide ? prev.filter(x => x !== countryWide.id) : prev;
+        return [...filtered, id];
+      }
+    });
+
+    if (result) setResult(null);
+  }
+
+  function isLocationDisabled(id: string): boolean {
+    const location = getLocationById(id);
+    if (!location || location.isCountryWide) return false;
+    const country = getCountryForId(id);
+    if (!country) return false;
+    const countryWide = LOCATIONS[country].find(s => s.isCountryWide);
+    return countryWide ? selectedLocations.includes(countryWide.id) : false;
+  }
+
+  const showIndiaWarning = selectedLocations.includes("in-remote") && workSetup !== "Work From Home";
 
   async function analyze() {
-    if (!reqText.trim()) return;
+    if (!reqText.trim() || selectedLocations.length === 0) return;
     setLoading(true);
     setError(null);
     setResult(null);
     setStreamProgress(0);
     setFeedback({});
+    setExpandedLocations(new Set());
+
+    const locationLabels = selectedLocations
+      .map(id => getLocationById(id)?.label)
+      .filter(Boolean) as string[];
 
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requisition: reqText, market }),
+        body: JSON.stringify({ requisition: reqText, locations: locationLabels, workSetup }),
       });
 
       if (!res.ok) {
@@ -347,15 +514,14 @@ export default function Home() {
         text += decoder.decode(value, { stream: true });
         setStreamProgress(text.length);
 
-        // Strip any preamble (e.g. markdown code fences) before the JSON
         const jsonStart = text.indexOf("{");
         if (jsonStart < 0) continue;
 
         try {
           const partial = parsePartialJSON(text.slice(jsonStart));
-          if (partial && typeof partial === "object" && partial.feasibilityScore !== undefined) {
+          if (partial && typeof partial === "object" && partial.results?.[0]?.feasibilityScore !== undefined) {
             flushSync(() => {
-              setResult(partial as AnalysisResult);
+              setResult(partial as AnalysisResponse);
             });
           }
         } catch {
@@ -388,8 +554,17 @@ export default function Home() {
     setResult(null);
   }
 
-  const riskFlags = result?.flags?.filter(f => f.source !== "alignment") || [];
-  const alignmentFlags = result?.flags?.filter(f => f.source === "alignment") || [];
+  function toggleExpanded(index: number) {
+    setExpandedLocations(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  const resultCount = result?.results?.length || 0;
+  const shared = result?.sharedAnalysis;
 
   return (
     <main className="min-h-screen">
@@ -410,7 +585,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.5
+              v2.6
             </button>
           </div>
         </div>
@@ -466,25 +641,70 @@ export default function Home() {
                 Paste a job requisition to get an instant feasibility assessment. The analyzer flags niche software requirements, stacked specializations, and other factors that extend time-to-fill.
               </p>
             )}
-            {/* Market Selector */}
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-sm font-semibold text-gray-700">Hiring Market</span>
-              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-                {MARKETS.map((m) => (
+
+            {/* Location Selector */}
+            <div className="mb-4">
+              <span className="text-sm font-semibold text-gray-700 block mb-2">Locations</span>
+              <div className="space-y-2">
+                {Object.entries(LOCATIONS).map(([country, sites]) => (
+                  <div key={country} className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-gray-400 w-20 flex-shrink-0">{country}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {sites.map(site => {
+                        const isSelected = selectedLocations.includes(site.id);
+                        const disabled = isLocationDisabled(site.id);
+                        return (
+                          <button
+                            key={site.id}
+                            onClick={() => !disabled && toggleLocation(site.id)}
+                            className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
+                              isSelected
+                                ? "bg-indigo-600 text-white border-indigo-600"
+                                : disabled
+                                ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
+                                : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                            }`}
+                          >
+                            {site.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Work Setup Selector */}
+            <div className="mb-4">
+              <span className="text-sm font-semibold text-gray-700 block mb-2">Work Setup</span>
+              <div className="flex gap-1.5">
+                {WORK_SETUPS.map(ws => (
                   <button
-                    key={m}
-                    onClick={() => { setMarket(m); if (result) setResult(null); }}
-                    className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                      market === m
-                        ? "bg-indigo-600 text-white"
-                        : "bg-white text-gray-600 hover:bg-gray-50"
-                    } ${m !== MARKETS[0] ? "border-l border-gray-200" : ""}`}
+                    key={ws}
+                    onClick={() => { setWorkSetup(ws); if (result) setResult(null); }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                      workSetup === ws
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                    }`}
                   >
-                    {m}
+                    {ws}
                   </button>
                 ))}
               </div>
             </div>
+
+            {/* India + non-WFH warning */}
+            {showIndiaWarning && (
+              <div className="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+                <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+                <span className="text-xs text-amber-700">India roles are remote only. Analysis will evaluate as Work From Home.</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-4">
               <label htmlFor="req" className="text-sm font-semibold text-gray-700">
                 Paste Job Requisition
@@ -545,90 +765,279 @@ export default function Home() {
         )}
 
         {/* Results */}
-        {result && (
+        {result && result.results?.length > 0 && (
           <div className="space-y-6 animate-fade-in">
-            {/* a. Score + Header */}
-            {result.feasibilityScore !== undefined && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
-                <div className="flex items-center mb-2">
-                  <h2 className="text-lg font-bold text-gray-900">Feasibility Analysis</h2>
-                  {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
-                </div>
-                <p className="text-xs text-gray-400 mb-6">
-                  This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
-                </p>
-                <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
-                  <ScoreGauge score={result.feasibilityScore} />
-                  <div className="space-y-3">
-                    {result.overallVerdict && (
-                      <div>
-                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Assessment</span>
-                        <p className="text-base text-gray-800 mt-1">{result.overallVerdict}</p>
+
+            {/* === Single Location (1 result) === */}
+            {resultCount === 1 && (() => {
+              const loc = result.results[0];
+              const riskFlags = loc.flags?.filter(f => f.source !== "alignment") || [];
+              const alignmentFlags = loc.flags?.filter(f => f.source === "alignment") || [];
+
+              return (
+                <>
+                  {/* Score + Header */}
+                  {loc.feasibilityScore !== undefined && (
+                    <div className="bg-white rounded-xl border shadow-sm p-6">
+                      <div className="flex items-center mb-2">
+                        <h2 className="text-lg font-bold text-gray-900">Feasibility Analysis</h2>
+                        {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
                       </div>
-                    )}
-                    {result.estimatedTimeToFill && (
-                      <div>
-                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Estimated Time-to-Fill</span>
-                        <p className="text-base text-gray-800 mt-1 font-medium">{result.estimatedTimeToFill}</p>
+                      <p className="text-xs text-gray-400 mb-6">
+                        This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
+                      </p>
+                      <div className="grid md:grid-cols-[auto_1fr] gap-8 items-start">
+                        <ScoreGauge score={loc.feasibilityScore} />
+                        <div className="space-y-3">
+                          {loc.overallVerdict && (
+                            <div>
+                              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Assessment</span>
+                              <p className="text-base text-gray-800 mt-1">{loc.overallVerdict}</p>
+                            </div>
+                          )}
+                          {loc.estimatedTimeToFill && (
+                            <div>
+                              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Estimated Time-to-Fill</span>
+                              <p className="text-base text-gray-800 mt-1 font-medium">{loc.estimatedTimeToFill}</p>
+                            </div>
+                          )}
+                          {loc.summary && (
+                            <div>
+                              <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</span>
+                              <p className="text-sm text-gray-700 mt-1 leading-relaxed">{loc.summary}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    {result.summary && (
-                      <div>
-                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</span>
-                        <p className="text-sm text-gray-700 mt-1 leading-relaxed">{result.summary}</p>
+                    </div>
+                  )}
+
+                  {/* Flagged Requirements */}
+                  {riskFlags.length > 0 && (
+                    <div className="bg-white rounded-xl border shadow-sm p-6">
+                      <div className="flex items-center mb-1">
+                        <h2 className="text-lg font-bold text-gray-900">
+                          Flagged Requirements
+                          <span className="ml-2 text-sm font-normal text-gray-500">
+                            ({riskFlags.length}{loading ? "+" : ""} found)
+                          </span>
+                        </h2>
+                        {!loading && <SectionFeedback section="flags" feedback={feedback.flags} onFeedback={handleFeedback} />}
                       </div>
-                    )}
+                      <p className="text-sm text-gray-500 mb-5">
+                        Requirements that may narrow your candidate pool and extend time-to-fill.
+                      </p>
+                      <div className="space-y-4">
+                        {riskFlags.map((flag, i) => (
+                          <FlagCard key={i} flag={flag} />
+                        ))}
+                      </div>
+                      <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
+                        Pool reduction estimates are directional, based on AI analysis of offshore staffing market patterns. Validate against internal pipeline data for specific roles.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Alignment Notes */}
+                  {alignmentFlags.length > 0 && (
+                    <div className="bg-white rounded-xl border shadow-sm p-6">
+                      <div className="flex items-center mb-1">
+                        <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
+                        {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
+                      </div>
+                      <p className="text-sm text-gray-500 mb-5">
+                        Potential mismatches between job description and screening criteria.
+                      </p>
+                      <div className="space-y-4">
+                        {alignmentFlags.map((flag, i) => (
+                          <AlignmentCard key={i} flag={flag} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* === 2-3 Locations: Side-by-Side Cards === */}
+            {resultCount >= 2 && resultCount <= 3 && (
+              <>
+                <div className="bg-white rounded-xl border shadow-sm p-6">
+                  <div className="flex items-center mb-2">
+                    <h2 className="text-lg font-bold text-gray-900">Feasibility Comparison</h2>
+                    {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
+                  </div>
+                  <p className="text-xs text-gray-400 mb-6">
+                    This is a directional assessment to support your review — not a final determination. Use your market knowledge and client context to validate.
+                  </p>
+                  <div className={`grid gap-4 ${resultCount === 2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}>
+                    {result.results.map((loc, i) => (
+                      loc.feasibilityScore !== undefined && (
+                        <div key={i} className="rounded-xl border border-gray-200 p-5">
+                          <h3 className="text-sm font-bold text-gray-900 mb-1">{loc.location}</h3>
+                          <p className="text-xs text-gray-400 mb-4">{loc.workSetup}</p>
+                          <div className="flex justify-center mb-4">
+                            <ScoreGauge score={loc.feasibilityScore} compact />
+                          </div>
+                          {loc.overallVerdict && (
+                            <p className="text-sm text-gray-700 mb-2">{loc.overallVerdict}</p>
+                          )}
+                          {loc.estimatedTimeToFill && (
+                            <p className="text-xs text-gray-500 mb-2">
+                              <span className="font-semibold">TTF:</span> {loc.estimatedTimeToFill}
+                            </p>
+                          )}
+                          {loc.summary && (
+                            <p className="text-xs text-gray-600 leading-relaxed">{loc.summary}</p>
+                          )}
+                        </div>
+                      )
+                    ))}
                   </div>
                 </div>
-              </div>
+
+                {/* Flags by location */}
+                {result.results.map((loc, i) => {
+                  const riskFlags = loc.flags?.filter(f => f.source !== "alignment") || [];
+                  const alignmentFlags = loc.flags?.filter(f => f.source === "alignment") || [];
+                  if (riskFlags.length === 0 && alignmentFlags.length === 0) return null;
+                  return (
+                    <div key={i} className="bg-white rounded-xl border shadow-sm p-6">
+                      <h2 className="text-lg font-bold text-gray-900 mb-1">{loc.location}</h2>
+                      {riskFlags.length > 0 && (
+                        <>
+                          <div className="flex items-center mb-1 mt-3">
+                            <h3 className="text-sm font-bold text-gray-700">
+                              Flagged Requirements
+                              <span className="ml-2 text-sm font-normal text-gray-500">
+                                ({riskFlags.length} found)
+                              </span>
+                            </h3>
+                          </div>
+                          <div className="space-y-3 mb-4">
+                            {riskFlags.map((flag, j) => (
+                              <FlagCard key={j} flag={flag} />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      {alignmentFlags.length > 0 && (
+                        <>
+                          <h3 className="text-sm font-bold text-gray-700 mt-3 mb-2">Alignment Notes</h3>
+                          <div className="space-y-3">
+                            {alignmentFlags.map((flag, j) => (
+                              <AlignmentCard key={j} flag={flag} />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
+                        Pool reduction estimates are directional, based on AI analysis of offshore staffing market patterns.
+                      </p>
+                    </div>
+                  );
+                })}
+              </>
             )}
 
-            {/* b. Flagged Requirements (risk flags only) */}
-            {riskFlags.length > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
-                <div className="flex items-center mb-1">
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Flagged Requirements
-                    <span className="ml-2 text-sm font-normal text-gray-500">
-                      ({riskFlags.length}{loading ? "+" : ""} found)
-                    </span>
-                  </h2>
-                  {!loading && <SectionFeedback section="flags" feedback={feedback.flags} onFeedback={handleFeedback} />}
+            {/* === 4+ Locations: Summary Table + Expandable Details === */}
+            {resultCount >= 4 && (
+              <>
+                <div className="bg-white rounded-xl border shadow-sm p-6">
+                  <div className="flex items-center mb-2">
+                    <h2 className="text-lg font-bold text-gray-900">Feasibility Comparison</h2>
+                    {!loading && <SectionFeedback section="score" feedback={feedback.score} onFeedback={handleFeedback} />}
+                  </div>
+                  <p className="text-xs text-gray-400 mb-6">
+                    This is a directional assessment to support your review — not a final determination.
+                  </p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-2 pr-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Location</th>
+                          <th className="text-center py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Score</th>
+                          <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Verdict</th>
+                          <th className="text-left py-2 pl-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">TTF</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.results.map((loc, i) => (
+                          <tr key={i} className="border-b border-gray-100 last:border-0">
+                            <td className="py-3 pr-4 font-medium text-gray-900">{loc.location}</td>
+                            <td className="py-3 px-4 text-center"><ScoreBadge score={loc.feasibilityScore} /></td>
+                            <td className="py-3 px-4 text-gray-700">{loc.overallVerdict}</td>
+                            <td className="py-3 pl-4 text-gray-600">{loc.estimatedTimeToFill}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mb-5">
-                  Requirements that may narrow your candidate pool and extend time-to-fill.
-                </p>
-                <div className="space-y-4">
-                  {riskFlags.map((flag, i) => (
-                    <FlagCard key={i} flag={flag} />
-                  ))}
-                </div>
-                <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
-                  Pool reduction estimates are directional, based on AI analysis of offshore staffing market patterns. Validate against internal pipeline data for specific roles.
-                </p>
-              </div>
+
+                {/* Expandable details per location */}
+                {result.results.map((loc, i) => {
+                  const isExpanded = expandedLocations.has(i);
+                  const riskFlags = loc.flags?.filter(f => f.source !== "alignment") || [];
+                  const alignmentFlags = loc.flags?.filter(f => f.source === "alignment") || [];
+
+                  return (
+                    <div key={i} className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                      <button
+                        onClick={() => toggleExpanded(i)}
+                        className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <ScoreBadge score={loc.feasibilityScore} />
+                          <span className="font-bold text-gray-900">{loc.location}</span>
+                          <span className="text-xs text-gray-400">{loc.workSetup}</span>
+                        </div>
+                        <svg
+                          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                          fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                        </svg>
+                      </button>
+                      {isExpanded && (
+                        <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-4">
+                          {loc.summary && (
+                            <p className="text-sm text-gray-700 leading-relaxed">{loc.summary}</p>
+                          )}
+                          {riskFlags.length > 0 && (
+                            <>
+                              <h3 className="text-sm font-bold text-gray-700">
+                                Flagged Requirements ({riskFlags.length})
+                              </h3>
+                              <div className="space-y-3">
+                                {riskFlags.map((flag, j) => (
+                                  <FlagCard key={j} flag={flag} />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                          {alignmentFlags.length > 0 && (
+                            <>
+                              <h3 className="text-sm font-bold text-gray-700 mt-2">Alignment Notes</h3>
+                              <div className="space-y-3">
+                                {alignmentFlags.map((flag, j) => (
+                                  <AlignmentCard key={j} flag={flag} />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
             )}
 
-            {/* Alignment Notes */}
-            {alignmentFlags.length > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
-                <div className="flex items-center mb-1">
-                  <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
-                  {!loading && <SectionFeedback section="alignment" feedback={feedback.alignment} onFeedback={handleFeedback} />}
-                </div>
-                <p className="text-sm text-gray-500 mb-5">
-                  Potential mismatches between job description and screening criteria.
-                </p>
-                <div className="space-y-4">
-                  {alignmentFlags.map((flag, i) => (
-                    <AlignmentCard key={i} flag={flag} />
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* === Shared Analysis Sections === */}
 
-            {/* c. Well-Calibrated Requirements */}
-            {result.wellCalibratedRequirements?.length > 0 && (
+            {/* Well-Calibrated Requirements */}
+            {(shared?.wellCalibratedRequirements?.length ?? 0) > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -638,7 +1047,7 @@ export default function Home() {
                   {!loading && <SectionFeedback section="calibrated" feedback={feedback.calibrated} onFeedback={handleFeedback} />}
                 </div>
                 <ul className="space-y-2">
-                  {result.wellCalibratedRequirements.map((req, i) => (
+                  {shared!.wellCalibratedRequirements.map((req, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
                       <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
@@ -650,8 +1059,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* d. Revised Screening Criteria */}
-            {result.revisedScreeningCriteria && (
+            {/* Revised Screening Criteria */}
+            {shared?.revisedScreeningCriteria && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
                 <div className="flex items-center mb-1">
                   <h2 className="text-lg font-bold text-gray-900">Recommended Screening Criteria</h2>
@@ -667,7 +1076,7 @@ export default function Home() {
                       <h3 className="text-sm font-bold text-red-900 uppercase tracking-wide">Must Have</h3>
                     </div>
                     <ul className="space-y-2">
-                      {(result.revisedScreeningCriteria.mustHave || []).map((item, i) => (
+                      {(shared!.revisedScreeningCriteria.mustHave || []).map((item, i) => (
                         <li key={i} className="text-sm text-red-900/80 leading-relaxed">{item}</li>
                       ))}
                     </ul>
@@ -678,7 +1087,7 @@ export default function Home() {
                       <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wide">Nice to Have</h3>
                     </div>
                     <ul className="space-y-2">
-                      {(result.revisedScreeningCriteria.niceToHave || []).map((item, i) => (
+                      {(shared!.revisedScreeningCriteria.niceToHave || []).map((item, i) => (
                         <li key={i} className="text-sm text-amber-900/80 leading-relaxed">{item}</li>
                       ))}
                     </ul>
@@ -689,7 +1098,7 @@ export default function Home() {
                       <h3 className="text-sm font-bold text-teal-900 uppercase tracking-wide">Trainable</h3>
                     </div>
                     <ul className="space-y-3">
-                      {(result.revisedScreeningCriteria.trainable || []).map((item, i) => (
+                      {(shared!.revisedScreeningCriteria.trainable || []).map((item, i) => (
                         <li key={i} className="text-sm text-teal-900/80">
                           <span className="leading-relaxed">{item.skill}</span>
                           {item.estimatedRampTime && (
@@ -705,15 +1114,15 @@ export default function Home() {
               </div>
             )}
 
-            {/* e. Recommendations */}
-            {result.recommendations?.length > 0 && (
+            {/* Recommendations */}
+            {(shared?.recommendations?.length ?? 0) > 0 && (
               <div className="bg-white rounded-xl border shadow-sm p-6">
                 <div className="flex items-center mb-4">
                   <h2 className="text-lg font-bold text-gray-900">Recommendations</h2>
                   {!loading && <SectionFeedback section="recommendations" feedback={feedback.recommendations} onFeedback={handleFeedback} />}
                 </div>
                 <ul className="space-y-3">
-                  {result.recommendations.map((rec, i) => (
+                  {shared!.recommendations.map((rec, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
                         {i + 1}
