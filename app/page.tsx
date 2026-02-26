@@ -152,6 +152,15 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.7.3",
+    date: "Feb 25, 2026",
+    changes: [
+      "Moved location-specific notes into a \"View details\" panel accessible from each location in the comparison table",
+      "Removed location-specific notes as a standalone page section — shorter, more scannable results",
+      "Fixed rendering order issue where location notes painted before flagged requirements",
+    ],
+  },
+  {
     version: "v2.7.2",
     date: "Feb 25, 2026",
     changes: [
@@ -433,6 +442,7 @@ export default function Home() {
   const [feedback, setFeedback] = useState<Record<string, FeedbackValue>>({});
   const [streamProgress, setStreamProgress] = useState(0);
   const [showChangelog, setShowChangelog] = useState(false);
+  const [detailLocation, setDetailLocation] = useState<LocationResult | null>(null);
   const prevTextLenRef = useRef(0);
 
   // Auto-detect work setup and locations from pasted text
@@ -509,6 +519,7 @@ export default function Home() {
     setResult(null);
     setStreamProgress(0);
     setFeedback({});
+    setDetailLocation(null);
 
     const locationLabels = selectedLocations
       .map(id => getLocationById(id)?.label)
@@ -601,7 +612,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.7.2
+              v2.7.3
             </button>
           </div>
         </div>
@@ -643,6 +654,65 @@ export default function Home() {
                   </ul>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Detail Modal */}
+      {detailLocation && (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={() => setDetailLocation(null)}>
+          <div className="absolute inset-0 bg-black/20" />
+          <div
+            className="relative w-full max-w-md bg-white shadow-xl h-full overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">{detailLocation.location}</h2>
+                <p className="text-xs text-gray-400">{detailLocation.workSetup}</p>
+              </div>
+              <button
+                onClick={() => setDetailLocation(null)}
+                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-5">
+              <div className="flex justify-center">
+                <ScoreGauge score={detailLocation.feasibilityScore} compact />
+              </div>
+              {detailLocation.verdict && (
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Assessment</span>
+                  <p className="text-sm text-gray-800 mt-1">{detailLocation.verdict}</p>
+                </div>
+              )}
+              {detailLocation.estimatedTimeToFill && (
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Estimated Time-to-Fill</span>
+                  <p className="text-sm text-gray-800 mt-1 font-medium">{detailLocation.estimatedTimeToFill}</p>
+                </div>
+              )}
+              {detailLocation.narrative && (
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Market Context</span>
+                  <p className="text-sm text-gray-700 mt-1 leading-relaxed">{detailLocation.narrative}</p>
+                </div>
+              )}
+              {(detailLocation.locationSpecificFlags?.length ?? 0) > 0 && (
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location-Specific Flags</span>
+                  <div className="mt-2 space-y-3">
+                    {detailLocation.locationSpecificFlags.map((flag, i) => (
+                      <FlagCard key={i} flag={flag} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -904,6 +974,17 @@ export default function Home() {
                             <span className="font-semibold">TTF:</span> {loc.estimatedTimeToFill}
                           </p>
                         )}
+                        {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
+                          <button
+                            onClick={() => setDetailLocation(loc)}
+                            className="mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                          >
+                            View details
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     )
                   ))}
@@ -928,7 +1009,8 @@ export default function Home() {
                         <th className="text-left py-2 pr-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Location</th>
                         <th className="text-center py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Score</th>
                         <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">Verdict</th>
-                        <th className="text-left py-2 pl-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">TTF</th>
+                        <th className="text-left py-2 px-4 font-semibold text-gray-500 text-xs uppercase tracking-wide">TTF</th>
+                        <th className="py-2 pl-4"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -937,7 +1019,17 @@ export default function Home() {
                           <td className="py-3 pr-4 font-medium text-gray-900">{loc.location}</td>
                           <td className="py-3 px-4 text-center"><ScoreBadge score={loc.feasibilityScore} /></td>
                           <td className="py-3 px-4 text-gray-700">{loc.verdict}</td>
-                          <td className="py-3 pl-4 text-gray-600">{loc.estimatedTimeToFill}</td>
+                          <td className="py-3 px-4 text-gray-600">{loc.estimatedTimeToFill}</td>
+                          <td className="py-3 pl-4">
+                            {(loc.narrative || (loc.locationSpecificFlags?.length ?? 0) > 0) && (
+                              <button
+                                onClick={() => setDetailLocation(loc)}
+                                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap"
+                              >
+                                Details
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -986,40 +1078,6 @@ export default function Home() {
                   {shared!.alignmentNotes.map((note, i) => (
                     <AlignmentCard key={i} note={note} />
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* === Multi-location: Location-Specific Notes === */}
-            {resultCount >= 2 && shared !== undefined && (
-              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Location-Specific Notes</h2>
-                <p className="text-sm text-gray-500 mb-5">
-                  How each location&apos;s market affects feasibility for this requisition.
-                </p>
-                <div className="space-y-5">
-                  {result.locationResults.map((loc, i) => {
-                    const hasFlags = (loc.locationSpecificFlags?.length ?? 0) > 0;
-                    return (
-                      <div key={i} className={`rounded-lg border border-gray-200 p-4 ${i > 0 ? "" : ""}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <ScoreBadge score={loc.feasibilityScore} />
-                          <span className="font-bold text-gray-900">{loc.location}</span>
-                          <span className="text-xs text-gray-400">{loc.workSetup}</span>
-                        </div>
-                        {loc.narrative && (
-                          <p className="text-sm text-gray-700 leading-relaxed">{loc.narrative}</p>
-                        )}
-                        {hasFlags && (
-                          <div className="mt-3 space-y-2">
-                            {loc.locationSpecificFlags.map((flag, j) => (
-                              <FlagCard key={j} flag={flag} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
             )}
