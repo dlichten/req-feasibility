@@ -83,6 +83,21 @@ type WorkSetup = "Work From Home" | "Hybrid" | "Fully On-Site";
 
 const WORK_SETUPS: WorkSetup[] = ["Work From Home", "Hybrid", "Fully On-Site"];
 
+const SHIFT_TYPES = [
+  "Morning (Weekends Off)",
+  "Morning (Weekdays Off)",
+  "Morning (1 Weekday & 1 Weekend Off)",
+  "Midshift (Weekends Off)",
+  "Midshift (Weekdays Off)",
+  "Midshift (1 Weekday & 1 Weekend Off)",
+  "Nightshift (Weekends Off)",
+  "Nightshift (Weekdays Off)",
+  "Nightshift (1 Weekday & 1 Weekend Off)",
+  "Rotational",
+] as const;
+
+type ShiftType = (typeof SHIFT_TYPES)[number];
+
 function getLocationById(id: string): LocationOption | undefined {
   for (const sites of Object.values(LOCATIONS)) {
     const found = sites.find(s => s.id === id);
@@ -152,6 +167,15 @@ interface AnalysisResponse {
 // === Constants ===
 
 const CHANGELOG = [
+  {
+    version: "v2.9.1",
+    date: "Feb 25, 2026",
+    changes: [
+      "Added Shift Type selector matching ATS shift options",
+      "Analysis now factors in shift desirability and its compounding effect on candidate pool",
+      "Added \"Shift Type Constraint\" as a new flag category",
+    ],
+  },
   {
     version: "v2.9",
     date: "Feb 25, 2026",
@@ -595,6 +619,7 @@ export default function Home() {
   const [reqText, setReqText] = useState("");
   const [selectedLocations, setSelectedLocations] = useState<string[]>(["ph-all"]);
   const [workSetup, setWorkSetup] = useState<WorkSetup>("Work From Home");
+  const [shiftType, setShiftType] = useState<ShiftType>("Morning (Weekends Off)");
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -742,7 +767,7 @@ export default function Home() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requisition: reqText, locations: locationLabels, workSetup }),
+        body: JSON.stringify({ requisition: reqText, locations: locationLabels, workSetup, shiftType }),
       });
 
       if (!res.ok) {
@@ -902,7 +927,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.9
+              v2.9.1
             </button>
           </div>
         </div>
@@ -1069,6 +1094,26 @@ export default function Home() {
                     }`}
                   >
                     {ws}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Shift Type Selector */}
+            <div className="mb-4">
+              <span className="text-sm font-semibold text-gray-700 block mb-2">Shift Type</span>
+              <div className="flex flex-wrap gap-1.5">
+                {SHIFT_TYPES.map(st => (
+                  <button
+                    key={st}
+                    onClick={() => { setShiftType(st); if (result) setResult(null); }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                      shiftType === st
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+                    }`}
+                  >
+                    {st}
                   </button>
                 ))}
               </div>

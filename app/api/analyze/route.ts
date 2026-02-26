@@ -90,6 +90,25 @@ When the work setup unnecessarily restricts the pool (e.g., a role that could be
 
 Important: If a country-wide location (All Philippines, All Colombia) is combined with Hybrid or On-Site, this is contradictory — you can't be hybrid from "all of the Philippines." Analyze it as WFH but flag the inconsistency.
 
+### Shift Type Impact
+
+The user will specify the shift type for the role. This affects candidate willingness and pool size:
+
+**Morning shift**: Most desirable for candidates. Minimal impact on feasibility. Weekends off is standard; weekday off or split days off are slightly less attractive but not a major constraint.
+
+**Midshift**: Moderate impact. In the Philippines this typically means afternoon/evening hours to overlap with US morning. Generally acceptable to most candidates. Slightly smaller pool than morning.
+
+**Nightshift**: Significant impact on candidate pool. In the Philippines, nightshift means graveyard hours (roughly 10pm-7am) to align with US business hours. Many candidates — especially experienced ones with families — will not accept nightshift. Estimated pool reduction of roughly 25-35% compared to morning shift for the same role. This compounds with other constraints.
+
+**Rotational**: Moderate-to-significant impact. The unpredictability is a deterrent. Some candidates prefer the variety, but most prefer fixed schedules. Slightly smaller pool than fixed nightshift because candidates can't plan around it.
+
+**Days off pattern**:
+- Weekends off: most desirable, no impact
+- Weekdays off: minor negative impact, some candidates will pass
+- 1 Weekday & 1 Weekend Off (split): moderate negative impact, less desirable than consecutive days off
+
+When shift type makes the req harder to fill, flag it as a "Shift Type Constraint." Nightshift alone is worth a flag on specialized roles. Nightshift + fully on-site + niche requirements is a major compounding constraint.
+
 ## Multi-Location Analysis Structure
 
 When analyzing a requisition for multiple locations, separate your analysis into shared and location-specific content.
@@ -167,7 +186,7 @@ Return a JSON object with this exact structure. Always use this format, even for
       {
         "requirement": "<the specific requirement being flagged, quoted from the req>",
         "riskLevel": "high" | "medium" | "low",
-        "category": "<one of: Niche Software, Niche Skill, Stacked Specificity, Title/JD Mismatch, Experience Threshold, Geographic/Market, Vague/Subjective Criteria, Other>",
+        "category": "<one of: Niche Software, Niche Skill, Stacked Specificity, Title/JD Mismatch, Experience Threshold, Geographic/Market, Shift Type Constraint, Vague/Subjective Criteria, Other>",
         "source": "screening_criteria" | "qualifications",
         "explanation": "<why this is a risk — include estimated talent pool impact where possible>",
         "suggestion": "<specific actionable fix, not vague advice>"
@@ -213,6 +232,7 @@ Return a JSON object with this exact structure. Always use this format, even for
 - **EXPERIENCE THRESHOLD**: Overly specific year requirements that may eliminate qualified candidates, especially when combined with other restrictive criteria.
 - **GEOGRAPHIC/MARKET**: Requirements that are particularly difficult in the specified location and work setup.
 - **WORK SETUP CONSTRAINT**: The specified work setup (Hybrid or On-Site) limits the talent pool more than the role requires. Flag when the job could be done remotely but is restricted to on-site/hybrid, or when a country-wide location is paired with a non-WFH setup.
+- **SHIFT TYPE CONSTRAINT**: The specified shift type (nightshift, rotational, or unfavorable days-off pattern) reduces the candidate pool. Flag when the shift compounds with other constraints. Nightshift on a specialized role is always worth flagging.
 - **VAGUE/SUBJECTIVE CRITERIA**: Requirements like "stable employment history" that lack clear definition and may be applied inconsistently or screen out good candidates.
 
 For shared flags sourced from screening criteria or qualifications, set the "source" field accordingly. Alignment observations (JD vs. criteria mismatches) go in \`sharedAnalysis.alignmentNotes\` — not in the flags array. These are informational and do not drive the score.
@@ -248,14 +268,14 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { requisition?: string; locations?: string[]; workSetup?: string };
+  let body: { requisition?: string; locations?: string[]; workSetup?: string; shiftType?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { requisition, locations = ["All Philippines (remote)"], workSetup = "Work From Home" } = body;
+  const { requisition, locations = ["All Philippines (remote)"], workSetup = "Work From Home", shiftType = "Morning (Weekends Off)" } = body;
   if (!requisition || typeof requisition !== "string" || !requisition.trim()) {
     return NextResponse.json(
       { error: "Please provide a requisition to analyze" },
@@ -283,7 +303,7 @@ export async function POST(request: Request) {
     const result = streamText({
       model: anthropic("claude-sonnet-4-6"),
       system: SYSTEM_PROMPT,
-      prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}]\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
+      prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}] [Shift Type: ${shiftType}]\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
     });
 
     return result.toTextStreamResponse({
