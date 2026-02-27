@@ -796,7 +796,7 @@ function CollapsibleSection({
           <span className="text-sm font-normal text-gray-400">({count})</span>
         )}
         <div className="flex-1" />
-        {headerRight && <div onClick={e => e.stopPropagation()}>{headerRight}</div>}
+        {expanded && headerRight && <div onClick={e => e.stopPropagation()}>{headerRight}</div>}
         <svg className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
         </svg>
@@ -1357,8 +1357,8 @@ export default function Home() {
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {/* Input Section */}
-        <div className="bg-white rounded-xl border shadow-sm">
-          {inputCollapsed ? (
+        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          {inputCollapsed && (
             <div className="px-6 py-4 flex items-center gap-3 animate-fade-in">
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-700 truncate">
@@ -1395,7 +1395,12 @@ export default function Home() {
                 </svg>
               </button>
             </div>
-          ) : (
+          )}
+          <div
+            className="grid transition-[grid-template-rows] duration-500 ease-out"
+            style={{ gridTemplateRows: inputCollapsed ? '0fr' : '1fr' }}
+          >
+          <div className="overflow-hidden min-h-0">
           <div className="p-6">
             {/* Location Selector */}
             <div className="mb-4">
@@ -1580,7 +1585,8 @@ export default function Home() {
               )}
             </div>
           </div>
-          )}
+          </div>
+          </div>
         </div>
 
         {/* Error */}
@@ -1799,6 +1805,11 @@ export default function Home() {
                 title="Flagged Requirements"
                 count={singleAllFlags.length}
                 defaultExpanded={true}
+                icon={
+                  <svg className="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                }
               >
                 <p className="text-sm text-gray-500 mb-5">
                   Requirements that may narrow your candidate pool and extend time-to-fill.
@@ -1824,6 +1835,11 @@ export default function Home() {
                 title="Flagged Requirements"
                 count={sortedSharedFlags.length}
                 defaultExpanded={true}
+                icon={
+                  <svg className="w-5 h-5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                }
               >
                 <p className="text-sm text-gray-500 mb-5">
                   Requirements that may narrow your candidate pool and extend time-to-fill. These apply across all locations.
@@ -1852,6 +1868,11 @@ export default function Home() {
                 title="Recommended Screening Criteria"
                 count={(shared!.revisedScreeningCriteria.mustHave?.length || 0) + (shared!.revisedScreeningCriteria.niceToHave?.length || 0) + (shared!.revisedScreeningCriteria.trainable?.length || 0)}
                 defaultExpanded={true}
+                icon={
+                  <svg className="w-5 h-5 text-[#071776]" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.5 3A2.5 2.5 0 003 5.5v9A2.5 2.5 0 005.5 17h9a2.5 2.5 0 002.5-2.5v-9A2.5 2.5 0 0014.5 3h-9zM7 7a.75.75 0 000 1.5h6A.75.75 0 0013 7H7zm0 3.5a.75.75 0 000 1.5h6a.75.75 0 000-1.5H7zM7 14a.75.75 0 000 1.5h3a.75.75 0 000-1.5H7z" clipRule="evenodd" />
+                  </svg>
+                }
                 headerRight={!loading ? <SectionFeedback section="screening" feedback={feedback.screening} onFeedback={handleFeedback} /> : undefined}
               >
                 <p className="text-sm text-gray-500 mb-5">
@@ -1913,6 +1934,11 @@ export default function Home() {
                   title="Recommendations"
                   count={shared!.recommendations.length}
                   defaultExpanded={false}
+                  icon={
+                    <svg className="w-5 h-5 text-[#071776]" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 1a6 6 0 00-3.815 10.631C7.237 12.5 8 13.443 8 14.456v.044a2 2 0 002 2h0a2 2 0 002-2v-.044c0-1.013.762-1.957 1.815-2.825A6 6 0 0010 1zM8.5 18a.5.5 0 000 1h3a.5.5 0 000-1h-3z" />
+                    </svg>
+                  }
                   headerRight={!loading ? <SectionFeedback section="recommendations" feedback={feedback.recommendations} onFeedback={handleFeedback} /> : undefined}
                 >
                   <ul className="space-y-3">
@@ -1940,6 +1966,11 @@ export default function Home() {
                 title="Alignment Notes"
                 count={singleAlignmentNotes.length}
                 defaultExpanded={false}
+                icon={
+                  <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+                  </svg>
+                }
               >
                 <p className="text-sm text-gray-500 mb-5">
                   Potential mismatches between job description and screening criteria.
@@ -1958,6 +1989,11 @@ export default function Home() {
                 title="Alignment Notes"
                 count={shared!.alignmentNotes.length}
                 defaultExpanded={false}
+                icon={
+                  <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
+                  </svg>
+                }
               >
                 <p className="text-sm text-gray-500 mb-5">
                   Potential mismatches between job description and screening criteria.
