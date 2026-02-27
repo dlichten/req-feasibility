@@ -182,6 +182,14 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.11.2",
+    date: "Feb 26, 2026",
+    changes: [
+      "Button now shows \"Analyzing...\" while running and changes to \"Re-analyze\" on completion",
+      "Added \"Analysis complete \u2193\" indicator near the button that scrolls to results on click",
+    ],
+  },
+  {
     version: "v2.11.1",
     date: "Feb 26, 2026",
     changes: [
@@ -720,7 +728,9 @@ export default function Home() {
   const [streamProgress, setStreamProgress] = useState(0);
   const [showChangelog, setShowChangelog] = useState(false);
   const [detailLocation, setDetailLocation] = useState<LocationResult | null>(null);
+  const [showCompleteIndicator, setShowCompleteIndicator] = useState(false);
   const prevTextLenRef = useRef(0);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Feedback loop state
   const [overallFeedback, setOverallFeedback] = useState<FeedbackValue>(null);
@@ -801,6 +811,20 @@ export default function Home() {
     };
   }, [loading, result]);
 
+  // Auto-dismiss completion indicator after 10s or on scroll
+  useEffect(() => {
+    if (!showCompleteIndicator) return;
+
+    const timer = setTimeout(() => setShowCompleteIndicator(false), 10000);
+    const onScroll = () => setShowCompleteIndicator(false);
+    window.addEventListener("scroll", onScroll, { once: true });
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [showCompleteIndicator]);
+
   function toggleLocation(id: string) {
     const location = getLocationById(id);
     if (!location) return;
@@ -842,6 +866,7 @@ export default function Home() {
     setStreamProgress(0);
     setFeedback({});
     setDetailLocation(null);
+    setShowCompleteIndicator(false);
     setOverallFeedback(null);
     setFlagFeedbackState({});
     setFeedbackNotes("");
@@ -917,10 +942,12 @@ export default function Home() {
         const jsonStart = text.indexOf("{");
         const final = JSON.parse(jsonStart >= 0 ? text.slice(jsonStart) : text);
         setResult(final);
+        setShowCompleteIndicator(true);
       } catch {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           setResult(JSON.parse(jsonMatch[0]));
+          setShowCompleteIndicator(true);
         }
       }
     } catch (err: unknown) {
@@ -1038,7 +1065,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.11.1
+              v2.11.2
             </button>
           </div>
         </div>
@@ -1326,10 +1353,23 @@ export default function Home() {
                     </svg>
                     {streamProgress > 0 ? "Receiving analysis..." : "Analyzing..."}
                   </>
+                ) : result ? (
+                  "Re-analyze"
                 ) : (
                   "Analyze Feasibility"
                 )}
               </button>
+              {showCompleteIndicator && (
+                <button
+                  onClick={() => {
+                    setShowCompleteIndicator(false);
+                    resultsRef.current?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="text-sm text-[#071776] font-medium animate-fade-in hover:underline"
+                >
+                  Analysis complete ↓
+                </button>
+              )}
               {selectedLocations.length === 0 && (
                 <span className="text-sm text-amber-600">Select at least one location</span>
               )}
@@ -1357,7 +1397,7 @@ export default function Home() {
 
         {/* Results */}
         {(loading || (result && (result.locationResults?.length > 0 || (shared?.flags?.length ?? 0) > 0))) && (
-          <div className="space-y-6">
+          <div ref={resultsRef} className="space-y-6">
 
             {/* === Score / Comparison === */}
             {loading && !hasScoreData && (
