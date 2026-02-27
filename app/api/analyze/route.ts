@@ -273,7 +273,7 @@ Return a JSON object with this exact structure. Always use this format, even for
       ]
     },
     "recommendations": [
-      "<numbered, prioritized, actionable recommendation>"
+      "<prioritized, actionable recommendation — do NOT prefix with numbers, the UI adds numbering>"
     ]
   }
 }

@@ -1870,7 +1870,7 @@ export default function Home() {
                       <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-[#071776]/10 text-[#071776] flex items-center justify-center text-xs font-bold">
                         {i + 1}
                       </span>
-                      <p className="text-sm text-gray-700 leading-relaxed">{rec}</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">{rec.replace(/^\d+\.\s*/, "")}</p>
                     </li>
                   ))}
                 </ul>
