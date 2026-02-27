@@ -182,6 +182,13 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.11.6",
+    date: "Feb 26, 2026",
+    changes: [
+      "Added client-side password gate — access code checked against environment variable, persisted in sessionStorage",
+    ],
+  },
+  {
     version: "v2.11.5",
     date: "Feb 26, 2026",
     changes: [
@@ -759,6 +766,19 @@ function ScoreBadge({ score }: { score: number }) {
 // === Main Component ===
 
 export default function Home() {
+  // Auth gate state
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [codeError, setCodeError] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("authenticated") === "true") {
+      setAuthenticated(true);
+    }
+    setAuthChecked(true);
+  }, []);
+
   const [reqText, setReqText] = useState("");
   const [selectedLocations, setSelectedLocations] = useState<string[]>(["ph-all"]);
   const [workSetup, setWorkSetup] = useState<WorkSetup>("Work From Home");
@@ -1095,6 +1115,58 @@ export default function Home() {
     : [];
   const singleAlignmentNotes = resultCount === 1 ? (shared?.alignmentNotes || []) : [];
 
+  // Auth gate — show nothing until sessionStorage check completes
+  if (!authChecked) return null;
+
+  if (!authenticated) {
+    const handleLogin = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (accessCode === process.env.NEXT_PUBLIC_ACCESS_CODE) {
+        sessionStorage.setItem("authenticated", "true");
+        setAuthenticated(true);
+        setCodeError(false);
+      } else {
+        setCodeError(true);
+      }
+    };
+
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-full max-w-sm px-6">
+          <div className="flex flex-col items-center mb-8">
+            <img src="/logo.png" alt="Connext" className="w-14 h-14 mb-4" />
+            <h1 className="text-xl font-bold text-gray-900">Req Feasibility Analyzer</h1>
+          </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                value={accessCode}
+                onChange={(e) => { setAccessCode(e.target.value); setCodeError(false); }}
+                placeholder="Access code"
+                autoFocus
+                className={`w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
+                  codeError
+                    ? "border-red-300 focus:ring-red-500/20"
+                    : "border-gray-300 focus:ring-[#071776]/20 focus:border-[#071776]"
+                }`}
+              />
+              {codeError && (
+                <p className="mt-2 text-sm text-red-600">Incorrect code</p>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="w-full py-3 bg-[#071776] text-white text-sm font-medium rounded-lg hover:bg-[#050f55] transition-colors"
+            >
+              Continue
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen">
       {/* Header */}
@@ -1110,7 +1182,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.11.5
+              v2.11.6
             </button>
           </div>
         </div>
