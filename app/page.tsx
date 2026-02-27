@@ -1196,18 +1196,20 @@ export default function Home() {
                 const ca = detailLocation.compensationAssessment;
                 const style = compRatingStyles[ca.rating] || compRatingStyles.competitive;
                 return (
-                  <div className={`rounded-lg border p-3 ${style.bg}`}>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="border-t border-gray-200 pt-3">
+                    <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Compensation</span>
                       <span className={`text-xs font-bold ${style.color}`}>{style.label}</span>
                     </div>
-                    <BulletText text={ca.explanation} className="text-sm text-gray-700" />
                     {ca.marketRange && (
                       <p className="text-xs text-gray-500 mt-1">Market range: {ca.marketRange}</p>
                     )}
                     {ca.siteVariance && (
-                      <p className="text-xs text-gray-500 mt-1">{ca.siteVariance}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{ca.siteVariance}</p>
                     )}
+                    <div className="mt-2">
+                      <BulletText text={ca.explanation} className="text-sm text-gray-700" />
+                    </div>
                   </div>
                 );
               })()}
@@ -1534,18 +1536,20 @@ export default function Home() {
                       const ca = singleLoc.compensationAssessment;
                       const style = compRatingStyles[ca.rating] || compRatingStyles.competitive;
                       return (
-                        <div className={`rounded-lg border p-3 ${style.bg}`}>
-                          <div className="flex items-center gap-2 mb-1">
+                        <div className="border-t border-gray-200 pt-3">
+                          <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Compensation</span>
                             <span className={`text-xs font-bold ${style.color}`}>{style.label}</span>
                           </div>
-                          <BulletText text={ca.explanation} className="text-sm text-gray-700" />
                           {ca.marketRange && (
                             <p className="text-xs text-gray-500 mt-1">Market range: {ca.marketRange}</p>
                           )}
                           {ca.siteVariance && (
-                            <p className="text-xs text-gray-500 mt-1">{ca.siteVariance}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{ca.siteVariance}</p>
                           )}
+                          <div className="mt-2">
+                            <BulletText text={ca.explanation} className="text-sm text-gray-700" />
+                          </div>
                         </div>
                       );
                     })()}
