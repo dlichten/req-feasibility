@@ -394,6 +394,24 @@ function sortFlags<T extends { riskLevel: string }>(flags: T[]): T[] {
   return [...flags].sort((a, b) => (RISK_ORDER[a.riskLevel] ?? 3) - (RISK_ORDER[b.riskLevel] ?? 3));
 }
 
+function BulletText({ text, className }: { text: string; className?: string }) {
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const bullets = lines.filter(l => l.startsWith("•"));
+  if (bullets.length >= 2) {
+    return (
+      <ul className={`space-y-1 ${className || ""}`}>
+        {lines.map((line, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <span className="text-gray-400 flex-shrink-0 mt-px">•</span>
+            <span>{line.replace(/^•\s*/, "")}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return <p className={className}>{text}</p>;
+}
+
 const riskColors = {
   high: { bg: "bg-red-50", border: "border-red-200", badge: "bg-red-100 text-red-800", icon: "text-red-500" },
   medium: { bg: "bg-amber-50", border: "border-amber-200", badge: "bg-amber-100 text-amber-800", icon: "text-amber-500" },
@@ -552,7 +570,7 @@ function FlagCard({ flag, flagFeedback, onFlagFeedback }: {
             )}
           </div>
           <p className="text-sm font-semibold text-gray-900 mb-1">{flag.requirement}</p>
-          {flag.explanation && <p className="text-sm text-gray-700 mb-2">{flag.explanation}</p>}
+          {flag.explanation && <BulletText text={flag.explanation} className="text-sm text-gray-700 mb-2" />}
           {flag.suggestion && (
             <div className="bg-white/60 rounded px-3 py-2 border border-gray-200/50">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Suggestion: </span>
@@ -614,7 +632,7 @@ function AlignmentCard({ note, noteFeedback, onNoteFeedback }: {
             )}
           </div>
           <p className="text-sm font-semibold text-gray-900 mb-1">{note.requirement}</p>
-          {note.explanation && <p className="text-sm text-gray-600 mb-2">{note.explanation}</p>}
+          {note.explanation && <BulletText text={note.explanation} className="text-sm text-gray-600 mb-2" />}
           {note.suggestion && (
             <div className="bg-white/60 rounded px-3 py-2 border border-sky-100">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Suggestion: </span>
@@ -1182,7 +1200,7 @@ export default function Home() {
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Compensation</span>
                       <span className={`text-xs font-bold ${style.color}`}>{style.label}</span>
                     </div>
-                    <p className="text-sm text-gray-700">{ca.explanation}</p>
+                    <BulletText text={ca.explanation} className="text-sm text-gray-700" />
                     {ca.marketRange && (
                       <p className="text-xs text-gray-500 mt-1">Market range: {ca.marketRange}</p>
                     )}
@@ -1195,7 +1213,7 @@ export default function Home() {
               {detailLocation.narrative && (
                 <div>
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Market Context</span>
-                  <p className="text-sm text-gray-700 mt-1 leading-relaxed">{detailLocation.narrative}</p>
+                  <BulletText text={detailLocation.narrative} className="text-sm text-gray-700 mt-1 leading-relaxed" />
                 </div>
               )}
               {(detailLocation.locationSpecificFlags?.length ?? 0) > 0 && (
@@ -1508,7 +1526,7 @@ export default function Home() {
                     {singleLoc.narrative && (
                       <div>
                         <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Summary</span>
-                        <p className="text-sm text-gray-700 mt-1 leading-relaxed">{singleLoc.narrative}</p>
+                        <BulletText text={singleLoc.narrative} className="text-sm text-gray-700 mt-1 leading-relaxed" />
                       </div>
                     )}
                     {singleLoc.compensationAssessment && (() => {
@@ -1520,7 +1538,7 @@ export default function Home() {
                             <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Compensation</span>
                             <span className={`text-xs font-bold ${style.color}`}>{style.label}</span>
                           </div>
-                          <p className="text-sm text-gray-700">{ca.explanation}</p>
+                          <BulletText text={ca.explanation} className="text-sm text-gray-700" />
                           {ca.marketRange && (
                             <p className="text-xs text-gray-500 mt-1">Market range: {ca.marketRange}</p>
                           )}
