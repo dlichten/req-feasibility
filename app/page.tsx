@@ -1210,11 +1210,8 @@ export default function Home() {
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Compensation</span>
                       <span className={`text-xs font-bold ${style.color}`}>{style.label}</span>
                     </div>
-                    {ca.marketRange && (
-                      <p className="text-xs text-gray-500 mt-1">Market range: {ca.marketRange}</p>
-                    )}
                     {ca.siteVariance && (
-                      <p className="text-xs text-gray-500 mt-0.5">{ca.siteVariance}</p>
+                      <p className="text-xs text-gray-500 mt-1">{ca.siteVariance}</p>
                     )}
                     <div className="mt-2">
                       <BulletText text={ca.explanation} className="text-sm text-gray-700" />
@@ -1550,11 +1547,8 @@ export default function Home() {
                             <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Compensation</span>
                             <span className={`text-xs font-bold ${style.color}`}>{style.label}</span>
                           </div>
-                          {ca.marketRange && (
-                            <p className="text-xs text-gray-500 mt-1">Market range: {ca.marketRange}</p>
-                          )}
                           {ca.siteVariance && (
-                            <p className="text-xs text-gray-500 mt-0.5">{ca.siteVariance}</p>
+                            <p className="text-xs text-gray-500 mt-1">{ca.siteVariance}</p>
                           )}
                           <div className="mt-2">
                             <BulletText text={ca.explanation} className="text-sm text-gray-700" />
