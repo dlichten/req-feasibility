@@ -182,6 +182,14 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.12",
+    date: "Feb 26, 2026",
+    changes: [
+      "Collapsible sections — flagged requirements and screening criteria expanded by default, others collapsed",
+      "Reordered sections: flagged reqs → screening criteria → recommendations → alignment notes → well-calibrated",
+    ],
+  },
+  {
     version: "v2.11.6",
     date: "Feb 26, 2026",
     changes: [
@@ -763,6 +771,41 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+function CollapsibleSection({
+  title,
+  count,
+  icon,
+  defaultExpanded,
+  children,
+  headerRight,
+}: {
+  title: string;
+  count?: number;
+  icon?: React.ReactNode;
+  defaultExpanded: boolean;
+  children: React.ReactNode;
+  headerRight?: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  return (
+    <div className="bg-white rounded-xl border shadow-sm animate-fade-in">
+      <button onClick={() => setExpanded(!expanded)} className="w-full px-6 py-4 flex items-center gap-2 text-left">
+        {icon}
+        <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+        {count !== undefined && (
+          <span className="text-sm font-normal text-gray-400">({count})</span>
+        )}
+        <div className="flex-1" />
+        {headerRight && <div onClick={e => e.stopPropagation()}>{headerRight}</div>}
+        <svg className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      {expanded && <div className="px-6 pb-6">{children}</div>}
+    </div>
+  );
+}
+
 // === Main Component ===
 
 export default function Home() {
@@ -1182,7 +1225,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.11.6
+              v2.12
             </button>
           </div>
         </div>
@@ -1752,15 +1795,11 @@ export default function Home() {
 
             {/* Single location: combined shared + location-specific flags */}
             {resultCount === 1 && singleAllFlags.length > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                <div className="flex items-center mb-1">
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Flagged Requirements
-                    <span className="ml-2 text-sm font-normal text-gray-500">
-                      ({singleAllFlags.length}{loading ? "+" : ""} found)
-                    </span>
-                  </h2>
-                </div>
+              <CollapsibleSection
+                title="Flagged Requirements"
+                count={singleAllFlags.length}
+                defaultExpanded={true}
+              >
                 <p className="text-sm text-gray-500 mb-5">
                   Requirements that may narrow your candidate pool and extend time-to-fill.
                 </p>
@@ -1774,22 +1813,18 @@ export default function Home() {
                 <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
                   Pool reduction estimates are directional, based on AI analysis of offshore staffing market patterns. Validate against internal pipeline data for specific roles.
                 </p>
-              </div>
+              </CollapsibleSection>
             )}
 
             {/* Multi-location: shared flags */}
             {resultCount >= 2 && (shared?.flags?.length ?? 0) > 0 && (() => {
               const sortedSharedFlags = sortFlags(shared!.flags);
               return (
-              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                <div className="flex items-center mb-1">
-                  <h2 className="text-lg font-bold text-gray-900">
-                    Flagged Requirements
-                    <span className="ml-2 text-sm font-normal text-gray-500">
-                      ({sortedSharedFlags.length} found)
-                    </span>
-                  </h2>
-                </div>
+              <CollapsibleSection
+                title="Flagged Requirements"
+                count={sortedSharedFlags.length}
+                defaultExpanded={true}
+              >
                 <p className="text-sm text-gray-500 mb-5">
                   Requirements that may narrow your candidate pool and extend time-to-fill. These apply across all locations.
                 </p>
@@ -1803,87 +1838,22 @@ export default function Home() {
                 <p className="mt-4 pt-3 border-t border-gray-100 text-[11px] font-mono text-gray-400">
                   Pool reduction estimates are directional, based on AI analysis of offshore staffing market patterns. Validate against internal pipeline data for specific roles.
                 </p>
-              </div>
+              </CollapsibleSection>
               );
             })()}
 
-            {/* === Alignment Notes === */}
-            {loading && singleAlignmentNotes.length === 0 && (shared?.alignmentNotes?.length ?? 0) === 0 && (
-              <SectionSkeleton title="Alignment Notes" message="Checking JD alignment..." />
-            )}
-
-            {/* Single location alignment */}
-            {resultCount === 1 && singleAlignmentNotes.length > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                <div className="flex items-center mb-1">
-                  <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
-                </div>
-                <p className="text-sm text-gray-500 mb-5">
-                  Potential mismatches between job description and screening criteria.
-                </p>
-                <div className="space-y-4">
-                  {singleAlignmentNotes.map((note, i) => (
-                    <AlignmentCard key={i} note={note} noteFeedback={flagFeedbackState[note.requirement]} onNoteFeedback={handleFlagFeedback} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Multi-location alignment */}
-            {resultCount >= 2 && (shared?.alignmentNotes?.length ?? 0) > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                <div className="flex items-center mb-1">
-                  <h2 className="text-lg font-bold text-gray-900">Alignment Notes</h2>
-                </div>
-                <p className="text-sm text-gray-500 mb-5">
-                  Potential mismatches between job description and screening criteria.
-                </p>
-                <div className="space-y-4">
-                  {shared!.alignmentNotes.map((note, i) => (
-                    <AlignmentCard key={i} note={note} noteFeedback={flagFeedbackState[note.requirement]} onNoteFeedback={handleFlagFeedback} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* === Well-Calibrated Requirements === */}
-            {loading && (shared?.wellCalibratedRequirements?.length ?? 0) === 0 && (
-              <SectionSkeleton title="Well-Calibrated Requirements" message="Identifying strong requirements..." />
-            )}
-
-            {(shared?.wellCalibratedRequirements?.length ?? 0) > 0 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                <div className="flex items-center gap-2 mb-4">
-                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                  </svg>
-                  <h2 className="text-lg font-bold text-gray-900">Well-Calibrated Requirements</h2>
-                  {!loading && <SectionFeedback section="calibrated" feedback={feedback.calibrated} onFeedback={handleFeedback} />}
-                </div>
-                <ul className="space-y-2">
-                  {shared!.wellCalibratedRequirements.map((req, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
-                      <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                      </svg>
-                      <span>{req}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* === Revised Screening Criteria === */}
+            {/* === Recommended Screening Criteria === */}
             {loading && !shared?.revisedScreeningCriteria && (
               <SectionSkeleton title="Recommended Screening Criteria" message="Building recommended criteria..." />
             )}
 
             {shared?.revisedScreeningCriteria && (
-              <div className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                <div className="flex items-center mb-1">
-                  <h2 className="text-lg font-bold text-gray-900">Recommended Screening Criteria</h2>
-                  {!loading && <SectionFeedback section="screening" feedback={feedback.screening} onFeedback={handleFeedback} />}
-                </div>
+              <CollapsibleSection
+                title="Recommended Screening Criteria"
+                count={(shared!.revisedScreeningCriteria.mustHave?.length || 0) + (shared!.revisedScreeningCriteria.niceToHave?.length || 0) + (shared!.revisedScreeningCriteria.trainable?.length || 0)}
+                defaultExpanded={true}
+                headerRight={!loading ? <SectionFeedback section="screening" feedback={feedback.screening} onFeedback={handleFeedback} /> : undefined}
+              >
                 <p className="text-sm text-gray-500 mb-5">
                   A restructured rubric you can share directly with the hiring manager.
                 </p>
@@ -1929,7 +1899,7 @@ export default function Home() {
                     </ul>
                   </div>
                 </div>
-              </div>
+              </CollapsibleSection>
             )}
 
             {/* === Recommendations === */}
@@ -1938,22 +1908,96 @@ export default function Home() {
             )}
 
             {(shared?.recommendations?.length ?? 0) > 0 && (
-              <div ref={recommendationsRef} className="bg-white rounded-xl border shadow-sm p-6 animate-fade-in">
-                <div className="flex items-center mb-4">
-                  <h2 className="text-lg font-bold text-gray-900">Recommendations</h2>
-                  {!loading && <SectionFeedback section="recommendations" feedback={feedback.recommendations} onFeedback={handleFeedback} />}
+              <div ref={recommendationsRef}>
+                <CollapsibleSection
+                  title="Recommendations"
+                  count={shared!.recommendations.length}
+                  defaultExpanded={false}
+                  headerRight={!loading ? <SectionFeedback section="recommendations" feedback={feedback.recommendations} onFeedback={handleFeedback} /> : undefined}
+                >
+                  <ul className="space-y-3">
+                    {shared!.recommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-[#071776]/10 text-[#071776] flex items-center justify-center text-xs font-bold">
+                          {i + 1}
+                        </span>
+                        <p className="text-sm text-gray-700 leading-relaxed">{rec.replace(/^\d+\.\s*/, "")}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleSection>
+              </div>
+            )}
+
+            {/* === Alignment Notes === */}
+            {loading && singleAlignmentNotes.length === 0 && (shared?.alignmentNotes?.length ?? 0) === 0 && (
+              <SectionSkeleton title="Alignment Notes" message="Checking JD alignment..." />
+            )}
+
+            {/* Single location alignment */}
+            {resultCount === 1 && singleAlignmentNotes.length > 0 && (
+              <CollapsibleSection
+                title="Alignment Notes"
+                count={singleAlignmentNotes.length}
+                defaultExpanded={false}
+              >
+                <p className="text-sm text-gray-500 mb-5">
+                  Potential mismatches between job description and screening criteria.
+                </p>
+                <div className="space-y-4">
+                  {singleAlignmentNotes.map((note, i) => (
+                    <AlignmentCard key={i} note={note} noteFeedback={flagFeedbackState[note.requirement]} onNoteFeedback={handleFlagFeedback} />
+                  ))}
                 </div>
-                <ul className="space-y-3">
-                  {shared!.recommendations.map((rec, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <span className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-[#071776]/10 text-[#071776] flex items-center justify-center text-xs font-bold">
-                        {i + 1}
-                      </span>
-                      <p className="text-sm text-gray-700 leading-relaxed">{rec.replace(/^\d+\.\s*/, "")}</p>
+              </CollapsibleSection>
+            )}
+
+            {/* Multi-location alignment */}
+            {resultCount >= 2 && (shared?.alignmentNotes?.length ?? 0) > 0 && (
+              <CollapsibleSection
+                title="Alignment Notes"
+                count={shared!.alignmentNotes.length}
+                defaultExpanded={false}
+              >
+                <p className="text-sm text-gray-500 mb-5">
+                  Potential mismatches between job description and screening criteria.
+                </p>
+                <div className="space-y-4">
+                  {shared!.alignmentNotes.map((note, i) => (
+                    <AlignmentCard key={i} note={note} noteFeedback={flagFeedbackState[note.requirement]} onNoteFeedback={handleFlagFeedback} />
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* === Well-Calibrated Requirements === */}
+            {loading && (shared?.wellCalibratedRequirements?.length ?? 0) === 0 && (
+              <SectionSkeleton title="Well-Calibrated Requirements" message="Identifying strong requirements..." />
+            )}
+
+            {(shared?.wellCalibratedRequirements?.length ?? 0) > 0 && (
+              <CollapsibleSection
+                title="Well-Calibrated Requirements"
+                count={shared!.wellCalibratedRequirements.length}
+                defaultExpanded={false}
+                icon={
+                  <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                  </svg>
+                }
+                headerRight={!loading ? <SectionFeedback section="calibrated" feedback={feedback.calibrated} onFeedback={handleFeedback} /> : undefined}
+              >
+                <ul className="space-y-2">
+                  {shared!.wellCalibratedRequirements.map((req, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                      </svg>
+                      <span>{req}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </CollapsibleSection>
             )}
 
           </div>
