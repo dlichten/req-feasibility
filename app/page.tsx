@@ -395,6 +395,7 @@ function sortFlags<T extends { riskLevel: string }>(flags: T[]): T[] {
 }
 
 function BulletText({ text, className }: { text: string; className?: string }) {
+  if (!text) return null;
   const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
   const bullets = lines.filter(l => l.startsWith("•"));
   if (bullets.length >= 2) {
