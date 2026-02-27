@@ -313,6 +313,17 @@ Rules:
 - Keep technical terms from the requisition itself (HCPCS, CMN, DME, Medicare) — those are the recruiter's working vocabulary. Don't simplify domain terms, simplify YOUR analysis language.
 - The test: could a recruiter read this aloud to a hiring manager on a call without stumbling? If not, rewrite it.
 
+## Formatting Rule: Bullets Over Paragraphs
+
+Format all explanations, summaries, and assessments as short bullet points, not paragraphs. Each bullet should be one clear point. Use "• " as the bullet character. This applies to:
+- Flagged requirement explanations
+- Alignment note explanations
+- The feasibility narrative/summary
+- Compensation assessment explanations
+- Location detail panel assessments and narratives
+
+Keep suggestion blocks as short paragraphs since they are already visually distinct. Keep the one-line verdict as a single sentence, not bullets.
+
 Return ONLY the JSON object, no markdown formatting or code blocks.`;
 
 export async function POST(request: Request) {

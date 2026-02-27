@@ -182,6 +182,13 @@ interface AnalysisResponse {
 
 const CHANGELOG = [
   {
+    version: "v2.11.4",
+    date: "Feb 26, 2026",
+    changes: [
+      "All analysis text now uses bullet points instead of dense paragraphs for easier scanning across all sections",
+    ],
+  },
+  {
     version: "v2.11.3",
     date: "Feb 26, 2026",
     changes: [
@@ -1075,7 +1082,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.11.3
+              v2.11.4
             </button>
           </div>
         </div>
