@@ -152,6 +152,8 @@ Adjust the market range based on the specific role requirements — a mid-level 
 
 **Step 5: Show your math.** Always state the market range and explain which threshold the offered MAX falls into. For example: "Market range for this role: PHP 45,000-65,000. Offered max of 45,000 falls at the floor of the market range (bottom 25%) — Below Market."
 
+Do not repeat the market range or site variance in the explanation bullet points — these are already displayed as metadata above the bullets in the UI. The bullets should focus on the assessment: how the offered comp compares, what the impact on candidate pool and fill time is, and what to do about it.
+
 When comp is below market, flag it as "Compensation Constraint." If the comp is below market AND the role has niche requirements, call out the compounding effect — you're asking for a unicorn and underpaying for it.
 
 In multi-location results, use the siteVariance field to note where comp expectations differ. Always prefix with "Site variance: ". For example: "Site variance: Competitive in Davao and Angeles, below market in Ortigas where cost of living is higher." For WFH/national pool roles, use: "Site variance: Not applicable — WFH draws from the national pool, so a single market range applies." Omit siteVariance entirely for single-site analyses with no variance to note.
