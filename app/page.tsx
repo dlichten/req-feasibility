@@ -1475,7 +1475,17 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <span className="text-sm font-semibold text-gray-700 block mb-2">Client Hours</span>
+                <span className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                  Client Hours
+                  <span className="relative group">
+                    <svg className="w-3.5 h-3.5 text-gray-400 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                    </svg>
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 px-3 py-2 text-xs text-white bg-gray-800 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity leading-relaxed">
+                      The working hours the client needs this role to cover. The analyzer will convert to local employee time to assess impact.
+                    </span>
+                  </span>
+                </span>
                 <div className="flex items-center gap-2 flex-wrap">
                   <select
                     value={shiftStart}
