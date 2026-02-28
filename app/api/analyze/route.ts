@@ -90,24 +90,34 @@ When the work setup unnecessarily restricts the pool (e.g., a role that could be
 
 Important: If a country-wide location (All Philippines, All Colombia) is combined with Hybrid or On-Site, this is contradictory — you can't be hybrid from "all of the Philippines." Analyze it as WFH but flag the inconsistency.
 
-### Shift Type Impact
+### Working Hours & Shift Impact
 
-The user will specify the shift type for the role. This affects candidate willingness and pool size:
+The user will specify the client's required working hours as a start time, end time, and time zone (e.g., "9:00 AM – 5:00 PM US Eastern (ET)").
 
-**Morning shift**: Most desirable for candidates. Minimal impact on feasibility. Weekends off is standard; weekday off or split days off are slightly less attractive but not a major constraint.
+**Your job: Convert to local employee time.** Based on the hiring location, calculate what these hours mean in the employee's local time zone. Use these standard offsets:
+- US Eastern (ET) = UTC-5 (UTC-4 during DST, March–November)
+- US Central (CT) = UTC-6 (UTC-5 during DST)
+- US Mountain (MT) = UTC-7 (UTC-6 during DST)
+- US Pacific (PT) = UTC-8 (UTC-7 during DST)
+- GMT / UTC = UTC+0
+- UK (GMT/BST) = UTC+0 (UTC+1 during BST, March–October)
+- Central Europe (CET) = UTC+1 (UTC+2 during CEST, March–October)
+- Australia Eastern (AEST) = UTC+10 (UTC+11 during AEDT, October–April)
 
-**Midshift**: Moderate impact. In the Philippines this typically means afternoon/evening hours to overlap with US morning. Generally acceptable to most candidates. Slightly smaller pool than morning.
+Employee local time zones:
+- Philippines = UTC+8 (no DST)
+- Colombia = UTC-5 (no DST)
+- India = UTC+5:30 (no DST)
 
-**Nightshift**: Significant impact on candidate pool. In the Philippines, nightshift means graveyard hours (roughly 10pm-7am) to align with US business hours. Many candidates — especially experienced ones with families — will not accept nightshift. Estimated pool reduction of roughly 25-35% compared to morning shift for the same role. This compounds with other constraints.
+**Assess impact based on local hours:**
+- **Normal business hours** (roughly 7am–7pm local): Minimal impact. Most candidates are available and willing. No flag needed.
+- **Evening/early morning shift** (roughly 6am–8am or 6pm–10pm local): Moderate impact. Some candidates will pass, but many are willing. Slight pool reduction.
+- **Overnight/graveyard** (roughly 10pm–6am local): Significant impact. Many candidates — especially experienced ones with families — will not accept overnight hours. Estimated pool reduction of 25-35% compared to daytime hours. This compounds with other constraints.
+- **Split across midnight** (e.g., 9pm–5am): Treat as overnight/graveyard for the portion that falls in sleeping hours.
 
-**Rotational**: Moderate-to-significant impact. The unpredictability is a deterrent. Some candidates prefer the variety, but most prefer fixed schedules. Slightly smaller pool than fixed nightshift because candidates can't plan around it.
+When the local equivalent of the client's required hours significantly reduces the candidate pool, flag it as a "Working Hours Constraint." State the local equivalent explicitly (e.g., "Client's 9:00 AM–5:00 PM ET = 10:00 PM–6:00 AM PHT — overnight shift").
 
-**Days off pattern**:
-- Weekends off: most desirable, no impact
-- Weekdays off: minor negative impact, some candidates will pass
-- 1 Weekday & 1 Weekend Off (split): moderate negative impact, less desirable than consecutive days off
-
-When shift type makes the req harder to fill, flag it as a "Shift Type Constraint." Nightshift alone is worth a flag on specialized roles. Nightshift + fully on-site + niche requirements is a major compounding constraint.
+Note: If the client hours happen to align with normal daytime hours in the employee's location (e.g., US Eastern hours for Colombia), there is no constraint — do not flag it.
 
 ### Compensation Assessment Rules
 
@@ -243,7 +253,7 @@ Return a JSON object with this exact structure. Always use this format, even for
       {
         "requirement": "<the specific requirement being flagged, quoted from the req>",
         "riskLevel": "high" | "medium" | "low",
-        "category": "<one of: Niche Software, Niche Skill, Stacked Specificity, Title/JD Mismatch, Experience Threshold, Geographic/Market, Shift Type Constraint, Compensation Constraint, Vague/Subjective Criteria, Other>",
+        "category": "<one of: Niche Software, Niche Skill, Stacked Specificity, Title/JD Mismatch, Experience Threshold, Geographic/Market, Working Hours Constraint, Compensation Constraint, Vague/Subjective Criteria, Other>",
         "source": "screening_criteria" | "qualifications",
         "explanation": "<why this is a risk — include estimated talent pool impact where possible>",
         "suggestion": "<specific actionable fix, not vague advice>"
@@ -289,7 +299,7 @@ Return a JSON object with this exact structure. Always use this format, even for
 - **EXPERIENCE THRESHOLD**: Overly specific year requirements that may eliminate qualified candidates, especially when combined with other restrictive criteria.
 - **GEOGRAPHIC/MARKET**: Requirements that are particularly difficult in the specified location and work setup.
 - **WORK SETUP CONSTRAINT**: The specified work setup (Hybrid or On-Site) limits the talent pool more than the role requires. Flag when the job could be done remotely but is restricted to on-site/hybrid, or when a country-wide location is paired with a non-WFH setup.
-- **SHIFT TYPE CONSTRAINT**: The specified shift type (nightshift, rotational, or unfavorable days-off pattern) reduces the candidate pool. Flag when the shift compounds with other constraints. Nightshift on a specialized role is always worth flagging.
+- **WORKING HOURS CONSTRAINT**: The client's required working hours translate to overnight or undesirable local hours for the employee. Flag when the local equivalent significantly reduces the candidate pool, especially when it compounds with other constraints.
 - **COMPENSATION CONSTRAINT**: The offered compensation is below market for this role type and location. Flag when comp will reduce the pool or extend fill time. Call out compounding effects when below-market comp is paired with niche requirements.
 - **VAGUE/SUBJECTIVE CRITERIA**: Requirements like "stable employment history" that lack clear definition and may be applied inconsistently or screen out good candidates.
 
@@ -337,14 +347,14 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { requisition?: string; locations?: string[]; workSetup?: string; shiftType?: string; compensation?: Record<string, { min: number; max: number }> };
+  let body: { requisition?: string; locations?: string[]; workSetup?: string; shiftStart?: string; shiftEnd?: string; clientTimezone?: string; compensation?: Record<string, { min: number; max: number }> };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { requisition, locations = ["All Philippines (remote)"], workSetup = "Work From Home", shiftType = "Morning (Weekends Off)", compensation } = body;
+  const { requisition, locations = ["All Philippines (remote)"], workSetup = "Work From Home", shiftStart = "9:00 AM", shiftEnd = "5:00 PM", clientTimezone = "US Eastern (ET)", compensation } = body;
   if (!requisition || typeof requisition !== "string" || !requisition.trim()) {
     return NextResponse.json(
       { error: "Please provide a requisition to analyze" },
@@ -373,7 +383,7 @@ export async function POST(request: Request) {
       model: anthropic("claude-sonnet-4-6"),
       temperature: 0,
       system: SYSTEM_PROMPT,
-      prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}] [Shift Type: ${shiftType}]${compensation && Object.keys(compensation).length > 0 ? ` [Compensation: ${Object.entries(compensation).map(([cur, range]) => `${cur} ${range.min.toLocaleString()} - ${range.max.toLocaleString()}/month`).join(", ")}]` : ""}\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
+      prompt: `[Hiring Locations: ${locations.join(", ")}] [Work Setup: ${workSetup}] [Client Working Hours: ${shiftStart} – ${shiftEnd} ${clientTimezone}]${compensation && Object.keys(compensation).length > 0 ? ` [Compensation: ${Object.entries(compensation).map(([cur, range]) => `${cur} ${range.min.toLocaleString()} - ${range.max.toLocaleString()}/month`).join(", ")}]` : ""}\n\nAnalyze the following job requisition for hiring feasibility risks:\n\n${requisition}`,
     });
 
     return result.toTextStreamResponse({

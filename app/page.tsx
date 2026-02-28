@@ -83,20 +83,27 @@ type WorkSetup = "Work From Home" | "Hybrid" | "Fully On-Site";
 
 const WORK_SETUPS: WorkSetup[] = ["Work From Home", "Hybrid", "Fully On-Site"];
 
-const SHIFT_TYPES = [
-  "Morning (Weekends Off)",
-  "Morning (Weekdays Off)",
-  "Morning (1 Weekday & 1 Weekend Off)",
-  "Midshift (Weekends Off)",
-  "Midshift (Weekdays Off)",
-  "Midshift (1 Weekday & 1 Weekend Off)",
-  "Nightshift (Weekends Off)",
-  "Nightshift (Weekdays Off)",
-  "Nightshift (1 Weekday & 1 Weekend Off)",
-  "Rotational",
+const TIMES = [
+  "12:00 AM","12:30 AM","1:00 AM","1:30 AM","2:00 AM","2:30 AM",
+  "3:00 AM","3:30 AM","4:00 AM","4:30 AM","5:00 AM","5:30 AM",
+  "6:00 AM","6:30 AM","7:00 AM","7:30 AM","8:00 AM","8:30 AM",
+  "9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM",
+  "12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM",
+  "3:00 PM","3:30 PM","4:00 PM","4:30 PM","5:00 PM","5:30 PM",
+  "6:00 PM","6:30 PM","7:00 PM","7:30 PM","8:00 PM","8:30 PM",
+  "9:00 PM","9:30 PM","10:00 PM","10:30 PM","11:00 PM","11:30 PM",
 ] as const;
 
-type ShiftType = (typeof SHIFT_TYPES)[number];
+const CLIENT_TIMEZONES = [
+  "US Eastern (ET)",
+  "US Central (CT)",
+  "US Mountain (MT)",
+  "US Pacific (PT)",
+  "GMT / UTC",
+  "UK (GMT/BST)",
+  "Central Europe (CET)",
+  "Australia Eastern (AEST)",
+] as const;
 
 const CURRENCY_BY_COUNTRY: Record<string, { code: string; symbol: string }> = {
   Philippines: { code: "PHP", symbol: "₱" },
@@ -181,6 +188,15 @@ interface AnalysisResponse {
 // === Constants ===
 
 const CHANGELOG = [
+  {
+    version: "v2.12.2",
+    date: "Feb 27, 2026",
+    changes: [
+      "Replaced shift dropdown with start time, end time, and client time zone inputs",
+      "Model converts client hours to local employee time and assesses impact per location",
+      "Removed days-off options (minimal sourcing impact)",
+    ],
+  },
   {
     version: "v2.12",
     date: "Feb 26, 2026",
@@ -825,7 +841,9 @@ export default function Home() {
   const [reqText, setReqText] = useState("");
   const [selectedLocations, setSelectedLocations] = useState<string[]>(["ph-all"]);
   const [workSetup, setWorkSetup] = useState<WorkSetup>("Work From Home");
-  const [shiftType, setShiftType] = useState<ShiftType>("Morning (Weekends Off)");
+  const [shiftStart, setShiftStart] = useState("9:00 AM");
+  const [shiftEnd, setShiftEnd] = useState("5:00 PM");
+  const [clientTimezone, setClientTimezone] = useState("US Eastern (ET)");
   const [compensation, setCompensation] = useState<Record<string, { min: string; max: string }>>({});
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1009,7 +1027,9 @@ export default function Home() {
           requisition: reqText,
           locations: locationLabels,
           workSetup,
-          shiftType,
+          shiftStart,
+          shiftEnd,
+          clientTimezone,
           compensation: Object.keys(compEntries).length > 0 ? compEntries : undefined,
         }),
       });
@@ -1073,7 +1093,9 @@ export default function Home() {
     setReqText(SAMPLE_REQ);
     setSelectedLocations(["ph-all"]);
     setWorkSetup("Work From Home");
-    setShiftType("Nightshift (Weekends Off)");
+    setShiftStart("9:00 AM");
+    setShiftEnd("5:00 PM");
+    setClientTimezone("US Eastern (ET)");
     setCompensation({ Philippines: { min: "38000", max: "45000" } });
     setResult(null);
   }
@@ -1225,7 +1247,7 @@ export default function Home() {
               onClick={() => setShowChangelog(true)}
               className="text-xs text-gray-400 hover:text-gray-600 font-mono px-2 py-1 rounded hover:bg-gray-50 transition-colors"
             >
-              v2.12
+              v2.12.2
             </button>
           </div>
         </div>
@@ -1365,7 +1387,7 @@ export default function Home() {
                   {[
                     ...selectedLocations.map(id => getLocationById(id)?.label).filter(Boolean),
                     workSetup === "Work From Home" ? "WFH" : workSetup === "Fully On-Site" ? "On-Site" : workSetup,
-                    shiftType,
+                    `${shiftStart}\u2013${shiftEnd} ${clientTimezone}`,
                     ...selectedCountries.map(country => {
                       const cur = CURRENCY_BY_COUNTRY[country];
                       const val = compensation[country];
@@ -1453,16 +1475,37 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <span className="text-sm font-semibold text-gray-700 block mb-2">Shift</span>
-                <select
-                  value={shiftType}
-                  onChange={(e) => { setShiftType(e.target.value as ShiftType); if (result) setResult(null); }}
-                  className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-600 focus:border-[#071776] focus:ring-1 focus:ring-[#071776]/20 focus:outline-none cursor-pointer"
-                >
-                  {SHIFT_TYPES.map(st => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
+                <span className="text-sm font-semibold text-gray-700 block mb-2">Client Hours</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={shiftStart}
+                    onChange={(e) => { setShiftStart(e.target.value); if (result) setResult(null); }}
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-600 focus:border-[#071776] focus:ring-1 focus:ring-[#071776]/20 focus:outline-none cursor-pointer"
+                  >
+                    {TIMES.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-400">to</span>
+                  <select
+                    value={shiftEnd}
+                    onChange={(e) => { setShiftEnd(e.target.value); if (result) setResult(null); }}
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-600 focus:border-[#071776] focus:ring-1 focus:ring-[#071776]/20 focus:outline-none cursor-pointer"
+                  >
+                    {TIMES.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={clientTimezone}
+                    onChange={(e) => { setClientTimezone(e.target.value); if (result) setResult(null); }}
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-600 focus:border-[#071776] focus:ring-1 focus:ring-[#071776]/20 focus:outline-none cursor-pointer"
+                  >
+                    {CLIENT_TIMEZONES.map(tz => (
+                      <option key={tz} value={tz}>{tz}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
